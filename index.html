@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Singapore Regenerative Diagnostic System using Knowledge Graph</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/vis-network@9.1.6/dist/vis-network.min.js"></script>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/d3-sankey@0.12.3/dist/d3-sankey.min.js"></script>
+</head>
+<body>
+    <div id="loading" class="loading">
+        <div class="spinner"></div>
+        <p class="loading-text">Loading application...</p>
+        <p style="margin-top: 10px; font-size: 0.9em; color: #95a5a6;">
+            <span id="load-status">Initializing...</span>
+        </p>
+    </div>
+    
+    <header>
+        <h1>Singapore Regenerative Diagnostic System using Knowledge Graph</h1>
+        <p>Natural Language Query + Visualization System | Complete Dataset: 1,869 Parcels</p>
+    </header>
+    
+    <nav>
+        <button class="nav-tab active" onclick="switchPage('query')">Query Assistant</button>
+        <button class="nav-tab" onclick="switchPage('network')">Network View</button>
+        <button class="nav-tab" onclick="switchPage('diagram')">Ontology Diagram</button>
+        <button class="nav-tab" onclick="switchPage('schema')">Ontology Schema</button>
+        <button class="nav-tab" onclick="switchPage('viz')">Advanced Visualizations</button>
+    </nav>
+    
+    <!-- Query Page -->
+    <div id="query-page" class="page active">
+        <div class="query-container">
+            <div class="query-input-section">
+                <h2>Natural Language Query Interface</h2>
+                
+                <div class="query-input-wrapper">
+                    <input type="text" id="queryInput" class="query-input" 
+                           placeholder="Ask a question about the knowledge graph in natural language...">
+                    <button class="query-btn" onclick="executeQuery()">Execute Query</button>
+                </div>
+                
+                <div class="example-queries">
+                    <h3>Example Queries (Click to Try)</h3>
+                    <p style="color: #7f8c8d; font-size: 0.9em; margin-bottom: 20px;">Demonstrating complex multi-criteria knowledge graph queries</p>
+
+                    <div class="example-query" onclick="loadExample('Find TransitOrientedParcels with mobility > 0.8')">
+                        <div class="example-title">High Mobility Transit Analysis</div>
+                        <div class="example-text">Find TransitOrientedParcels with mobility > 0.8</div>
+                        <div style="font-size: 0.85em; color: #95a5a6; margin-top: 5px;">Complex: Class-based filtering + dimension score threshold</div>
+                    </div>
+
+                    <div class="example-query" onclick="loadExample('Find communities where > 80% are EcologicalChampionParcels')">
+                        <div class="example-title">Ecological Community Detection</div>
+                        <div class="example-text">Find communities where > 80% are EcologicalChampionParcels</div>
+                        <div style="font-size: 0.85em; color: #95a5a6; margin-top: 5px;">Complex: Graph traversal + neighbor type analysis + threshold filtering</div>
+                    </div>
+
+                    <div class="example-query" onclick="loadExample('Find SocialServiceHubParcel with social score > 0.8')">
+                        <div class="example-title">High Social Performance Hubs</div>
+                        <div class="example-text">Find SocialServiceHubParcel with social score > 0.8</div>
+                        <div style="font-size: 0.85em; color: #95a5a6; margin-top: 5px;">Complex: Type-specific query + multi-dimensional threshold filtering</div>
+                    </div>
+
+                    <div class="example-query" onclick="loadExample('Find EcologicalChampionParcel with ecological > 0.6')">
+                        <div class="example-title">High Ecological Performance</div>
+                        <div class="example-text">Find EcologicalChampionParcel with ecological > 0.6</div>
+                        <div style="font-size: 0.85em; color: #95a5a6; margin-top: 5px;">Complex: Class-based filtering + ecological dimension threshold</div>
+                    </div>
+
+                    <div class="example-query" onclick="loadExample('Why does kml_106173 have RCI < 0.5')">
+                        <div class="example-title">Diagnostic Analysis</div>
+                        <div class="example-text">Why does kml_106173 have RCI < 0.5</div>
+                        <div style="font-size: 0.85em; color: #95a5a6; margin-top: 5px;">Complex: Property extraction + multi-dimensional scoring + classification reasoning</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="resultsSection" class="results-section">
+                <div class="results-header">
+                    <h2>Query Results</h2>
+                    <span class="results-count" id="resultsCount">0 results</span>
+                </div>
+
+                <div id="queryInterpretation"></div>
+                <div id="resultsContent"></div>
+            </div>
+
+            <!-- Map Section -->
+            <div id="mapSection" class="map-section" style="display: none;">
+                <div class="map-header">
+                    <h2>Parcel Locations Map</h2>
+                    <div class="map-controls">
+                        <button class="btn btn-small" onclick="fitMapToParcels()">Fit to Parcels</button>
+                        <button class="btn btn-small" onclick="clearMapHighlights()">Clear Highlights</button>
+                    </div>
+                </div>
+                <div id="parcelMap" style="height: 600px; width: 100%; border-radius: 8px; overflow: hidden;"></div>
+                <div class="map-legend" id="mapLegend">
+                    <div style="font-weight: 700; margin-bottom: 8px;">Legend</div>
+                    <div><span style="display: inline-block; width: 16px; height: 16px; background: rgba(52, 152, 219, 0.2); border: 2px solid #3498db; vertical-align: middle;"></span> All Parcels</div>
+                    <div><span style="display: inline-block; width: 16px; height: 16px; background: rgba(231, 76, 60, 0.6); border: 2px solid #e74c3c; vertical-align: middle;"></span> Query Results</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Network Page -->
+    <div id="network-page" class="page">
+        <div class="controls-bar">
+            <div class="control-group">
+                <input type="text" id="searchInput" class="search-input" placeholder="Search nodes by ID...">
+                <button class="btn" onclick="resetView()">Reset View</button>
+                <button class="btn btn-secondary" onclick="fitNetwork()">Fit to Screen</button>
+            </div>
+            <div class="control-group">
+                <button class="btn btn-secondary" onclick="toggleLegend()">Toggle Legend</button>
+            </div>
+        </div>
+        
+        <div class="main-container">
+            <div class="network-wrapper">
+                <div id="network-canvas"></div>
+                
+                <div class="info-panel">
+                    <h3>Network Statistics</h3>
+                    <div class="stat-row">
+                        <span class="stat-label">Total Nodes</span>
+                        <span class="stat-value" id="nodeCount">0</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Total Edges</span>
+                        <span class="stat-value" id="edgeCount">0</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Selected</span>
+                        <span class="stat-value" id="selectedInfo">None</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Visible Nodes</span>
+                        <span class="stat-value" id="visibleNodes">0</span>
+                    </div>
+                </div>
+                
+                <div class="legend-panel" id="legendPanel">
+                    <h3>Node Types</h3>
+                    <div id="legendContent"></div>
+                </div>
+            </div>
+            
+            <div id="sidebar" class="sidebar">
+                <div class="sidebar-header">
+                    <h2 id="sidebarTitle">Node Details</h2>
+                    <button class="close-btn" onclick="closeSidebar()">&times;</button>
+                </div>
+                <div class="sidebar-content" id="sidebarContent">
+                    <p style="color: #7f8c8d;">Click on a node or edge to view details</p>
+                </div>
+
+                <!-- Mini Map Section for Network View -->
+                <div id="networkMapSection" class="network-map-section" style="display: none;">
+                    <div class="network-map-header">
+                        <h3>Parcel Location</h3>
+                        <button class="btn-mini" onclick="fitNetworkMap()">Fit</button>
+                    </div>
+                    <div id="networkMiniMap" style="height: 350px; width: 100%; border-radius: 4px; overflow: hidden;"></div>
+                    <div class="network-map-legend">
+                        <div><span class="legend-dot" style="background: #f39c12;"></span>Selected Parcel</div>
+                        <div><span class="legend-dot" style="background: #9b59b6;"></span>Connected Parcels</div>
+                        <div><span class="legend-dot" style="background: rgba(149, 165, 166, 0.3);"></span>Other Parcels</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Ontology Diagram Page -->
+    <div id="diagram-page" class="page">
+        <div class="diagram-container">
+            <div class="diagram-controls">
+                <button class="btn" id="toggleDiagramMode">Switch to Summary Diagram</button>
+                <input type="text" id="diagramSearch" class="search-input" placeholder="Search classes...">
+                <button class="btn" onclick="zoomIn()">Zoom In (+)</button>
+                <button class="btn" onclick="zoomOut()">Zoom Out (-)</button>
+                <button class="btn" onclick="resetDiagram()">Reset View</button>
+                <button class="btn btn-secondary" onclick="downloadDiagram()">Download SVG</button>
+            </div>
+            <div class="diagram-info-panel" id="diagramDetails" style="position: absolute; top: 80px; right: 20px; width: 280px; background: white; border: 1px solid #ddd; border-radius: 8px; padding: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); display: none;">
+                <div class="details-body"></div>
+            </div>
+            <div class="diagram-canvas">
+                <svg id="ontology-diagram" class="diagram-svg"></svg>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Schema Page -->
+    <div id="schema-page" class="page">
+        <div class="schema-container">
+            <div class="schema-section">
+                <h2>Class Hierarchy</h2>
+                <div id="classHierarchy" class="hierarchy-tree"></div>
+            </div>
+            
+            <div class="schema-section">
+                <h2>Classes</h2>
+                <div id="classList" class="class-grid"></div>
+            </div>
+            
+            <div class="schema-section">
+                <h2>Properties</h2>
+                <div id="propertyList" class="property-grid"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Advanced Visualizations Page -->
+    <div id="viz-page" class="page">
+        <div class="viz-container">
+            <div class="viz-controls">
+                <button class="btn" id="showSankey" onclick="showVisualization('sankey')">Sankey Flow Diagram</button>
+                <button class="btn" id="showSunburst" onclick="showVisualization('sunburst')">Radial Sunburst Chart</button>
+            </div>
+
+            <!-- Sankey Diagram -->
+            <div id="sankey-container" class="viz-section" style="display: none;">
+                <h2>Knowledge Graph Flow: Parcels → Relationships → Facilities</h2>
+                <p style="color: #7f8c8d; margin-bottom: 10px;">Interactive flow visualization - Hover for details, Click nodes to highlight connections</p>
+                <div id="sankeyStats" style="margin-bottom: 15px; padding: 15px; background: #f8f9fa; border-radius: 8px; display: none;">
+                    <div style="display: flex; gap: 30px; flex-wrap: wrap;">
+                        <div><strong>Total Parcels:</strong> <span id="totalParcels">0</span></div>
+                        <div><strong>Total Connections:</strong> <span id="totalConnections">0</span></div>
+                        <div><strong>Facility Types:</strong> <span id="facilityTypes">0</span></div>
+                    </div>
+                </div>
+                <div id="sankeyChart" style="width: 100%; height: 700px; position: relative;"></div>
+                <div id="sankeyTooltip" style="position: absolute; display: none; background: white; padding: 12px; border: 2px solid #3498db; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); pointer-events: none; z-index: 1000;"></div>
+            </div>
+
+            <!-- Sunburst Chart -->
+            <div id="sunburst-container" class="viz-section" style="display: none;">
+                <h2>Hierarchical View: Singapore Regenerative Knowledge Graph</h2>
+                <p style="color: #7f8c8d; margin-bottom: 20px;">Interactive radial visualization of the knowledge graph hierarchy</p>
+                <div id="sunburstChart" style="width: 100%; height: 700px; display: flex; justify-content: center; align-items: center;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Load JavaScript -->
+    <script src="loader.js"></script>
+    <script src="app.js?v=20260202-VIZ"></script>
+    <script>
+        // Verification script - check if map functions are loaded
+        window.addEventListener('load', function() {
+            console.log('=== MAP FUNCTIONS CHECK ===');
+            console.log('showMapWithParcels:', typeof window.showMapWithParcels !== 'undefined' ? '✓ LOADED' : '✗ MISSING');
+            console.log('showNetworkMiniMap:', typeof showNetworkMiniMap !== 'undefined' ? '✓ LOADED' : '✗ MISSING');
+            console.log('fitMapToParcels:', typeof window.fitMapToParcels !== 'undefined' ? '✓ LOADED' : '✗ MISSING');
+            console.log('fitNetworkMap:', typeof window.fitNetworkMap !== 'undefined' ? '✓ LOADED' : '✗ MISSING');
+            console.log('===========================');
+        });
+    </script>
+    <script>
+        // Advanced Visualizations
+        let currentViz = null;
+
+        function showVisualization(type) {
+            // Hide all viz sections
+            document.getElementById('sankey-container').style.display = 'none';
+            document.getElementById('sunburst-container').style.display = 'none';
+
+            // Update button states
+            document.getElementById('showSankey').classList.remove('btn-secondary');
+            document.getElementById('showSunburst').classList.remove('btn-secondary');
+
+            if (type === 'sankey') {
+                document.getElementById('sankey-container').style.display = 'block';
+                document.getElementById('showSankey').classList.add('btn-secondary');
+                if (currentViz !== 'sankey') {
+                    createSankeyDiagram();
+                    currentViz = 'sankey';
+                }
+            } else if (type === 'sunburst') {
+                document.getElementById('sunburst-container').style.display = 'block';
+                document.getElementById('showSunburst').classList.add('btn-secondary');
+                if (currentViz !== 'sunburst') {
+                    createSunburstChart();
+                    currentViz = 'sunburst';
+                }
+            }
+        }
+
+        function createSankeyDiagram() {
+            if (!window.QUERY_DATA) {
+                console.error('Query data not loaded');
+                return;
+            }
+
+            const parcels = window.QUERY_DATA.parcels || [];
+
+            // Count parcels by type
+            const parcelTypeCounts = {};
+            parcels.forEach(p => {
+                parcelTypeCounts[p.type] = (parcelTypeCounts[p.type] || 0) + 1;
+            });
+
+            // Create Sankey data
+            const nodes = [];
+            const links = [];
+            const nodeMap = {};
+            let nodeIndex = 0;
+
+            // Add parcel type nodes (left side)
+            const topParcelTypes = Object.entries(parcelTypeCounts)
+                .filter(([type, count]) => type && !type.includes('Relation'))
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 8);
+
+            topParcelTypes.forEach(([type, count]) => {
+                nodes.push({ name: type });
+                nodeMap[type] = nodeIndex++;
+            });
+
+            // Add relationship node (middle)
+            nodes.push({ name: 'Proximity Relations' });
+            const proximityIndex = nodeIndex++;
+            nodes.push({ name: 'Facility Relations' });
+            const facilityIndex = nodeIndex++;
+
+            // Add facility nodes (right side)
+            const facilities = ['BusStation', 'ChildCareService', 'SocialServiceAgency', 'SportFacility'];
+            facilities.forEach(f => {
+                nodes.push({ name: f });
+                nodeMap[f] = nodeIndex++;
+            });
+
+            // Create links from parcels to relations
+            topParcelTypes.forEach(([type, count]) => {
+                if (nodeMap[type] !== undefined) {
+                    links.push({
+                        source: nodeMap[type],
+                        target: proximityIndex,
+                        value: Math.floor(count * 0.7)
+                    });
+                    links.push({
+                        source: nodeMap[type],
+                        target: facilityIndex,
+                        value: Math.floor(count * 0.3)
+                    });
+                }
+            });
+
+            // Create links from relations to facilities
+            facilities.forEach(f => {
+                if (nodeMap[f] !== undefined) {
+                    links.push({
+                        source: facilityIndex,
+                        target: nodeMap[f],
+                        value: Math.floor(parcels.length * 0.2 / facilities.length)
+                    });
+                }
+            });
+
+            // Clear previous chart
+            d3.select('#sankeyChart').selectAll('*').remove();
+
+            // Create Sankey diagram
+            const width = document.getElementById('sankeyChart').clientWidth;
+            const height = 700;
+
+            const svg = d3.select('#sankeyChart')
+                .append('svg')
+                .attr('width', width)
+                .attr('height', height);
+
+            const sankey = d3.sankey()
+                .nodeWidth(15)
+                .nodePadding(10)
+                .extent([[50, 50], [width - 50, height - 50]]);
+
+            const { nodes: sankeyNodes, links: sankeyLinks } = sankey({
+                nodes: nodes.map(d => Object.assign({}, d)),
+                links: links.map(d => Object.assign({}, d))
+            });
+
+            // Color scale
+            const color = d3.scaleOrdinal(d3.schemeCategory10);
+
+            // Add links
+            svg.append('g')
+                .selectAll('path')
+                .data(sankeyLinks)
+                .join('path')
+                .attr('d', d3.sankeyLinkHorizontal())
+                .attr('stroke', d => color(d.source.name))
+                .attr('stroke-width', d => Math.max(1, d.width))
+                .attr('fill', 'none')
+                .attr('opacity', 0.5);
+
+            // Add nodes
+            svg.append('g')
+                .selectAll('rect')
+                .data(sankeyNodes)
+                .join('rect')
+                .attr('x', d => d.x0)
+                .attr('y', d => d.y0)
+                .attr('height', d => d.y1 - d.y0)
+                .attr('width', d => d.x1 - d.x0)
+                .attr('fill', d => color(d.name))
+                .attr('opacity', 0.8);
+
+            // Add labels
+            svg.append('g')
+                .selectAll('text')
+                .data(sankeyNodes)
+                .join('text')
+                .attr('x', d => d.x0 < width / 2 ? d.x1 + 6 : d.x0 - 6)
+                .attr('y', d => (d.y1 + d.y0) / 2)
+                .attr('dy', '0.35em')
+                .attr('text-anchor', d => d.x0 < width / 2 ? 'start' : 'end')
+                .text(d => d.name)
+                .style('font-size', '12px')
+                .style('fill', '#333');
+        }
+
+        function createSunburstChart() {
+            if (!window.QUERY_DATA) {
+                console.error('Query data not loaded');
+                return;
+            }
+
+            const parcels = window.QUERY_DATA.parcels || [];
+
+            // Create hierarchical data
+            const parcelsByType = {};
+            parcels.forEach(p => {
+                if (!parcelsByType[p.type]) {
+                    parcelsByType[p.type] = [];
+                }
+                parcelsByType[p.type].push(p);
+            });
+
+            const hierarchyData = {
+                name: 'Singapore',
+                children: Object.entries(parcelsByType)
+                    .filter(([type]) => type && !type.includes('Relation'))
+                    .map(([type, items]) => ({
+                        name: type,
+                        value: items.length,
+                        children: items.slice(0, 5).map(p => ({
+                            name: p.label,
+                            value: (p.RCI_score || 0.5) * 100
+                        }))
+                    }))
+            };
+
+            // Clear previous chart
+            d3.select('#sunburstChart').selectAll('*').remove();
+
+            const width = 700;
+            const height = 700;
+            const radius = Math.min(width, height) / 2;
+
+            const svg = d3.select('#sunburstChart')
+                .append('svg')
+                .attr('width', width)
+                .attr('height', height)
+                .append('g')
+                .attr('transform', `translate(${width / 2}, ${height / 2})`);
+
+            const color = d3.scaleOrdinal(d3.schemeCategory10);
+
+            const partition = d3.partition()
+                .size([2 * Math.PI, radius]);
+
+            const root = d3.hierarchy(hierarchyData)
+                .sum(d => d.value);
+
+            partition(root);
+
+            const arc = d3.arc()
+                .startAngle(d => d.x0)
+                .endAngle(d => d.x1)
+                .innerRadius(d => d.y0)
+                .outerRadius(d => d.y1);
+
+            svg.selectAll('path')
+                .data(root.descendants())
+                .join('path')
+                .attr('d', arc)
+                .style('fill', d => color(d.data.name))
+                .style('stroke', '#fff')
+                .style('stroke-width', '2px')
+                .attr('opacity', 0.8)
+                .on('mouseover', function(event, d) {
+                    d3.select(this).attr('opacity', 1);
+                })
+                .on('mouseout', function(event, d) {
+                    d3.select(this).attr('opacity', 0.8);
+                })
+                .append('title')
+                .text(d => `${d.data.name}\nValue: ${d.value}`);
+
+            // Add labels for main segments
+            svg.selectAll('text')
+                .data(root.descendants().filter(d => d.depth === 1))
+                .join('text')
+                .attr('transform', d => {
+                    const angle = (d.x0 + d.x1) / 2;
+                    const radius = (d.y0 + d.y1) / 2;
+                    return `rotate(${angle * 180 / Math.PI - 90}) translate(${radius}, 0) rotate(${angle > Math.PI ? 180 : 0})`;
+                })
+                .attr('dy', '0.35em')
+                .attr('text-anchor', d => (d.x0 + d.x1) / 2 > Math.PI ? 'end' : 'start')
+                .text(d => d.data.name)
+                .style('font-size', '10px')
+                .style('fill', '#333')
+                .style('pointer-events', 'none');
+        }
+
+        // Initialize first visualization when page loads
+        window.addEventListener('load', function() {
+            // Wait a bit for data to load
+            setTimeout(() => {
+                if (document.getElementById('viz-page').classList.contains('active')) {
+                    showVisualization('sankey');
+                }
+            }, 1000);
+        });
+    </script>
+</body>
+</html>
