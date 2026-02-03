@@ -2366,26 +2366,49 @@
         }
 
         function displayContextSummaryResults(results, container) {
+            const total = results.reduce((sum, r) => sum + (r.parcelCount || 0), 0) || 1;
+
+            const formatStatus = (s) => {
+                if (!s) return { title: 'Unknown', desc: 'No label', range: '-' };
+                if (s.startsWith('1_')) return { title: 'Isolated', desc: 'Mostly different neighbors', range: '< 0.2' };
+                if (s.startsWith('2_')) return { title: 'Resilient', desc: 'Mixed context, some alignment', range: '0.2 – 0.4' };
+                if (s.startsWith('3_')) return { title: 'Conforming', desc: 'Mostly same-typology neighbors', range: '≥ 0.4' };
+                return { title: s, desc: 'Context status', range: '-' };
+            };
+
             let html = '<div class="results-grid">';
             results.forEach(r => {
+                const meta = formatStatus(r.contextStatus);
+                const pct = ((r.parcelCount || 0) / total) * 100;
+                const avgPct = (r.avgConformityRatio || 0) * 100;
+                const minPct = (r.minRatio || 0) * 100;
+                const maxPct = (r.maxRatio || 0) * 100;
+
                 html += `
                     <div class="result-card">
-                        <h3>${r.contextStatus}</h3>
+                        <h3>${meta.title}</h3>
                         <div class="result-property">
-                            <span class="result-label">Parcel Count</span>
-                            <span class="result-value highlight">${r.parcelCount}</span>
+                            <span class="result-label">Meaning</span>
+                            <span class="result-value">${meta.desc}</span>
+                        </div>
+                        <div class="result-property">
+                            <span class="result-label">Conformity Range</span>
+                            <span class="result-value">${meta.range}</span>
+                        </div>
+                        <div class="result-property">
+                            <span class="result-label">Parcel Share</span>
+                            <span class="result-value highlight">${r.parcelCount} (${pct.toFixed(1)}%)</span>
                         </div>
                         <div class="result-property">
                             <span class="result-label">Avg Conformity</span>
-                            <span class="result-value">${(r.avgConformityRatio || 0).toFixed(3)}</span>
+                            <span class="result-value">${avgPct.toFixed(1)}%</span>
                         </div>
                         <div class="result-property">
-                            <span class="result-label">Min Ratio</span>
-                            <span class="result-value">${(r.minRatio || 0).toFixed(3)}</span>
+                            <span class="result-label">Min–Max</span>
+                            <span class="result-value">${minPct.toFixed(1)}% – ${maxPct.toFixed(1)}%</span>
                         </div>
-                        <div class="result-property">
-                            <span class="result-label">Max Ratio</span>
-                            <span class="result-value">${(r.maxRatio || 0).toFixed(3)}</span>
+                        <div style="margin-top: 8px; height: 8px; background:#eef2f6; border-radius: 999px; overflow:hidden;">
+                            <div style="height:100%; width:${Math.min(100, Math.max(2, pct)).toFixed(1)}%; background:#3498db;"></div>
                         </div>
                     </div>
                 `;
