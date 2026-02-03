@@ -13,23 +13,12 @@
         // Network data placeholder
         let NETWORK_DATA = null;
         let SCHEMA_DATA = null;
-        let DIAGRAM_DATA = null;
-
-        // Diagram state
-        let DIAGRAM_RENDERED = false;
-        let diagramViewBox = { x: 0, y: 0, w: 1400, h: 800 };
-        let diagramDrag = { active: false, startX: 0, startY: 0, origX: 0, origY: 0 };
-        // Diagram filters + selection
-        let diagramFilters = { subClass: true, objProps: true, dataProps: true };
-        let diagramSelection = { type: null, name: null };
-        // Diagram mode: 'summary' (featured view) or 'full' (all classes/properties)
-        let diagramMode = 'full';
+        // Removed ontology diagram data/features
         
         function init() {
             // Data is loaded by loader.js into window.*
             NETWORK_DATA = window.NETWORK_DATA;
             SCHEMA_DATA = window.SCHEMA_DATA;
-            DIAGRAM_DATA = window.DIAGRAM_DATA;
             QUERY_DATA = window.QUERY_DATA;
             queryData = window.QUERY_DATA;
             
@@ -55,38 +44,13 @@
             schemaData = SCHEMA_DATA;
 
             // Initialize visible types
-            NETWORK_DATA.stats.node_types.forEach(type => visibleTypes.add(type));
+            const rawTypes = NETWORK_DATA.stats.node_types || [];
+            const typeList = rawTypes.map(t => (typeof t === 'string' ? t : t.type)).filter(Boolean);
+            typeList.forEach(type => visibleTypes.add(type));
 
             initNetwork();
             createLegend();
             renderSchema();
-            renderOntologyDiagram();
-            // Diagram UI controls
-            const tSub = document.getElementById('toggleSubClass');
-            const tObj = document.getElementById('toggleObjProps');
-            const tDat = document.getElementById('toggleDataProps');
-            const sInp = document.getElementById('diagramSearch');
-            const tMode = document.getElementById('toggleDiagramMode');
-
-            if (tSub) tSub.addEventListener('change', () => { diagramFilters.subClass = tSub.checked; resetDiagram(); });
-            if (tObj) tObj.addEventListener('change', () => { diagramFilters.objProps = tObj.checked; resetDiagram(); });
-            if (tDat) tDat.addEventListener('change', () => { diagramFilters.dataProps = tDat.checked; resetDiagram(); });
-
-            if (sInp) {
-                sInp.addEventListener('input', () => {
-                    const q = (sInp.value || '').trim().toLowerCase();
-                    highlightDiagram(q);
-                });
-            }
-            if (tMode) {
-                tMode.addEventListener('click', () => {
-                    diagramMode = (diagramMode === 'summary') ? 'full' : 'summary';
-                    tMode.textContent = (diagramMode === 'summary') ? 'Switch to Full Diagram' : 'Switch to Summary Diagram';
-                    resetDiagram();
-                });
-                // initial label
-                tMode.textContent = 'Switch to Summary Diagram';
-            }
 
             document.getElementById('nodeCount').textContent = allNodes.length;
             document.getElementById('edgeCount').textContent = allEdges.length;
@@ -252,7 +216,8 @@
 
         function createLegend() {
             const legendContent = document.getElementById('legendContent');
-            const types = NETWORK_DATA.stats.node_types;
+            const rawTypes = NETWORK_DATA.stats.node_types || [];
+            const types = rawTypes.map(t => (typeof t === 'string' ? t : t.type)).filter(Boolean);
             const typeCounts = {};
             allNodes.forEach(n => {
                 typeCounts[n.type] = (typeCounts[n.type] || 0) + 1;
@@ -349,7 +314,7 @@
         function renderTreeNode(className, cls, allClasses, level) {
             let html = `<div class="tree-node">`;
             html += `<div class="tree-node-name">${className}</div>`;
-            html += `<div class="tree-node-info">${cls.label || ''} (${cls.instances_count} instances)</div>`;
+            html += `<div class="tree-node-info">${cls.label || ''}</div>`;
             
             // Find children
             Object.keys(allClasses).forEach(childName => {
@@ -366,21 +331,74 @@
         function renderClasses() {
             const container = document.getElementById('classList');
             const classes = schemaData.classes;
-            
+
             let html = '';
-            Object.keys(classes).forEach(className => {
+            const classNames = Object.keys(classes).sort((a, b) => a.localeCompare(b));
+
+            const hasParent = (cls, parentName) => {
+                const sc = cls.subClassOf || [];
+                return sc.includes(parentName);
+            };
+
+            const isParcelClass = (name, cls) => {
+                if (name.includes('Parcel')) return true;
+                return hasParent(cls, 'ResidentialParcel');
+            };
+
+            const isFacilityClass = (name, cls) => {
+                if (name.includes('Facility') || name.includes('Station') || name.includes('Service') || name.includes('Agency') || name.includes('Hub') || name.includes('GreenSpace')) return true;
+                return hasParent(cls, 'PublicFacility') || hasParent(cls, 'SocialFacility') || hasParent(cls, 'TransportHub');
+            };
+
+            const isRelationClass = (name) => {
+                return name.includes('Relation') || name.includes('Proximity');
+            };
+
+            const parcels = [];
+            const facilities = [];
+            const relations = [];
+            const others = [];
+
+            classNames.forEach(className => {
                 const cls = classes[className];
-                html += `<div class="class-card">
+                if (isRelationClass(className)) {
+                    relations.push({ className, cls });
+                } else if (isParcelClass(className, cls)) {
+                    parcels.push({ className, cls });
+                } else if (isFacilityClass(className, cls)) {
+                    facilities.push({ className, cls });
+                } else {
+                    others.push({ className, cls });
+                }
+            });
+
+            const renderCard = (className, cls) => `
+                <div class="class-card">
                     <div class="class-name">${className}</div>
                     <div class="class-label">${cls.label || 'No description'}</div>
                     ${cls.comment ? `<div class="class-label">${cls.comment}</div>` : ''}
                     <div class="class-meta">
-                        <div class="meta-item"><strong>Instances:</strong> ${cls.instances_count}</div>
+                        
                         ${cls.subClassOf.length > 0 ? `<div class="meta-item"><strong>Parent:</strong> ${cls.subClassOf.join(', ')}</div>` : ''}
                     </div>
-                </div>`;
-            });
-            
+                </div>
+            `;
+
+            const renderSection = (title, items) => {
+                if (!items.length) return '';
+                let out = `<div class="class-section">`;
+                out += `<div class="class-section-title">${title}</div>`;
+                out += `<div class="class-grid">`;
+                out += items.map(i => renderCard(i.className, i.cls)).join('');
+                out += `</div></div>`;
+                return out;
+            };
+
+            html += renderSection('Parcels', parcels);
+            html += renderSection('Facilities', facilities);
+            html += renderSection('Relations', relations);
+            html += renderSection('Other Classes', others);
+
             container.innerHTML = html;
         }
         
@@ -434,12 +452,6 @@
                 eventObj.target.classList.add('active');
             }
 
-            // Ensure diagram is rendered when user opens that tab
-            if (pageName === 'diagram') {
-                resetDiagram();
-                const sInp = document.getElementById('diagramSearch');
-                if (sInp) sInp.focus();
-            }
         }
         
         function resetView() {
@@ -462,970 +474,6 @@
             legend.style.display = legend.style.display === 'none' ? 'block' : 'none';
         }
 
-        function renderOntologyDiagram() {
-            if (!schemaData || !schemaData.classes || !schemaData.properties) {
-                console.warn('Schema data not ready yet for diagram.');
-                return;
-            }
-
-            const svg = document.getElementById('ontology-diagram');
-            if (!svg) return;
-
-            // Prefer using diagram_data.json if present (more detailed + stable layout)
-            const diagramData = DIAGRAM_DATA || window.DIAGRAM_DATA;
-            if (diagramData && Array.isArray(diagramData.nodes) && diagramData.nodes.length) {
-                // clear
-                while (svg.firstChild) svg.removeChild(svg.firstChild);
-                svg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
-
-                // viewBox from data (fallback)
-                const vb = (diagramData.layout && diagramData.layout.viewBox) ? diagramData.layout.viewBox : { x: 0, y: 0, w: 2100, h: 1200 };
-                diagramViewBox = { x: vb.x, y: vb.y, w: vb.w, h: vb.h };
-                svg.setAttribute('viewBox', `${diagramViewBox.x} ${diagramViewBox.y} ${diagramViewBox.w} ${diagramViewBox.h}`);
-
-                // helpers
-                function el(name, attrs = {}) {
-                    const e = document.createElementNS('http://www.w3.org/2000/svg', name);
-                    Object.keys(attrs).forEach(k => e.setAttribute(k, attrs[k]));
-                    return e;
-                }
-
-                // markers
-                const defs = el('defs');
-                const mk = el('marker', { id: 'arrow', markerWidth: '10', markerHeight: '10', refX: '8', refY: '3', orient: 'auto' });
-                mk.appendChild(el('path', { d: 'M0,0 L8,3 L0,6 Z', fill: 'rgba(0,0,0,0.65)' }));
-                defs.appendChild(mk);
-                const mk2 = el('marker', { id: 'arrowLight', markerWidth: '10', markerHeight: '10', refX: '8', refY: '3', orient: 'auto' });
-                mk2.appendChild(el('path', { d: 'M0,0 L8,3 L0,6 Z', fill: 'rgba(0,0,0,0.28)' }));
-                defs.appendChild(mk2);
-                svg.appendChild(defs);
-
-                // background
-                svg.appendChild(el('rect', { x: diagramViewBox.x, y: diagramViewBox.y, width: diagramViewBox.w, height: diagramViewBox.h, fill: 'white' }));
-
-                // index
-                const nodeById = {};
-                diagramData.nodes.forEach(n => { nodeById[n.id] = n; });
-
-                // group headings (optional)
-                const groups = {};
-                diagramData.nodes.forEach(n => {
-                    const g = n.group || 'Other';
-                    if (!groups[g]) groups[g] = { minX: n.x, minY: n.y };
-                    groups[g].minX = Math.min(groups[g].minX, n.x);
-                    groups[g].minY = Math.min(groups[g].minY, n.y);
-                });
-                Object.keys(groups).forEach(g => {
-                    const t = el('text', { x: groups[g].minX, y: groups[g].minY - 18, 'font-size': '13', 'font-weight': '700', fill: 'rgba(0,0,0,0.55)' });
-                    t.textContent = g;
-                    svg.appendChild(t);
-                });
-
-                // draw edges first
-                (diagramData.edges || []).forEach(e0 => {
-                    const a = nodeById[e0.from];
-                    const b = nodeById[e0.to];
-                    if (!a || !b) return;
-
-                    const x1 = a.x + a.w;
-                    const y1 = a.y + a.h / 2;
-                    const x2 = b.x;
-                    const y2 = b.y + b.h / 2;
-
-                    const dashed = (e0.type === 'subClassOf');
-                    const light = dashed;
-
-                    const path = el('path', {
-                        d: `M ${x1} ${y1} C ${x1 + 80} ${y1}, ${x2 - 80} ${y2}, ${x2} ${y2}`,
-                        fill: 'none',
-                        stroke: light ? 'rgba(0,0,0,0.25)' : 'rgba(0,0,0,0.55)',
-                        'stroke-width': light ? '2' : '2.2',
-                        'marker-end': light ? 'url(#arrowLight)' : 'url(#arrow)'
-                    });
-                    if (dashed) path.setAttribute('stroke-dasharray', '6 6');
-                    svg.appendChild(path);
-
-                    const tx = (x1 + x2) / 2;
-                    const ty = (y1 + y2) / 2 + (light ? -10 : 14);
-                    const lab = el('text', { x: tx, y: ty, 'font-size': '12', fill: light ? 'rgba(0,0,0,0.40)' : 'rgba(0,0,0,0.70)' });
-                    lab.textContent = e0.label || e0.type;
-                    lab.style.cursor = 'pointer';
-                    lab.addEventListener('click', () => {
-                        const p = (schemaData && schemaData.properties) ? schemaData.properties[lab.textContent] : null;
-                        if (p) {
-                            setDetails(lab.textContent,
-                                [p.type],
-                                {
-                                    label: p.label || '-',
-                                    domain: (p.domain || []).join(', ') || '-',
-                                    range: (p.range || []).join(', ') || '-'
-                                },
-                                '',
-                                []
-                            );
-                        } else {
-                            setDetails(lab.textContent, ['Edge'], { from: e0.from, to: e0.to, type: e0.type }, '', []);
-                        }
-                    });
-                    svg.appendChild(lab);
-                });
-
-                // draw nodes
-                diagramData.nodes.forEach(n => {
-                    const g = el('g', { 'data-diagram-id': n.id });
-                    const rect = el('rect', {
-                        x: n.x, y: n.y, width: n.w, height: n.h, rx: 12, ry: 12,
-                        fill: 'white',
-                        stroke: 'rgba(0,0,0,0.35)',
-                        'stroke-width': '1.5'
-                    });
-                    g.appendChild(rect);
-
-                    const title = el('text', { x: n.x + 14, y: n.y + 22, 'font-size': '14', 'font-weight': '700', fill: 'rgba(0,0,0,0.86)' });
-                    title.textContent = n.label || n.id;
-                    g.appendChild(title);
-
-                    const sub = (n.meta && n.meta.label) ? String(n.meta.label) : '';
-                    if (sub) {
-                        const subtitle = el('text', { x: n.x + 14, y: n.y + 42, 'font-size': '12', fill: 'rgba(0,0,0,0.55)' });
-                        subtitle.textContent = sub;
-                        g.appendChild(subtitle);
-                    }
-
-                    // hover
-                    g.style.cursor = 'pointer';
-                    g.addEventListener('mouseenter', () => {
-                        rect.setAttribute('stroke', 'rgba(52,152,219,0.95)');
-                        rect.setAttribute('stroke-width', '2.4');
-                    });
-                    g.addEventListener('mouseleave', () => {
-                        rect.setAttribute('stroke', 'rgba(0,0,0,0.35)');
-                        rect.setAttribute('stroke-width', '1.5');
-                    });
-
-                    // click => details (include datatype properties)
-                    g.addEventListener('click', () => {
-                        const meta = n.meta || {};
-                        const dps = Array.isArray(meta.datatypeProperties) ? meta.datatypeProperties : [];
-                        setDetails(n.id,
-                            ['Class'],
-                            {
-                                label: meta.label || '-',
-                                instances: (meta.instances_count !== undefined ? meta.instances_count : 0),
-                                comment: meta.comment || '-'
-                            },
-                            'datatypeProperties',
-                            (dps.length ? dps : ['(none)'])
-                        );
-                    });
-
-                    svg.appendChild(g);
-                });
-
-                // pan/zoom
-                bindPanZoom(svg);
-
-                // default details
-                setDetails('Ontology Diagram', ['Interactive'], {
-                    mode: 'diagram_data.json',
-                    hint: 'Mouse wheel to zoom; drag to pan. Click nodes/edge labels for details.'
-                }, '', []);
-
-                DIAGRAM_RENDERED = true;
-                return;
-            }
-
-            // Always full re-render (because filters/search can change)
-            DIAGRAM_RENDERED = false;
-
-            while (svg.firstChild) svg.removeChild(svg.firstChild);
-            svg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
-
-            // Helpers
-            function el(name, attrs = {}) {
-                const e = document.createElementNS('http://www.w3.org/2000/svg', name);
-                Object.keys(attrs).forEach(k => e.setAttribute(k, attrs[k]));
-                return e;
-            }
-
-            function bindPanZoom(svg) {
-                // Avoid stacking multiple listeners on re-render
-                svg.onwheel = (e) => {
-                    e.preventDefault();
-                    const scale = (e.deltaY < 0) ? 0.9 : 1.1;
-                    diagramViewBox.w *= scale;
-                    diagramViewBox.h *= scale;
-                    svg.setAttribute('viewBox', `${diagramViewBox.x} ${diagramViewBox.y} ${diagramViewBox.w} ${diagramViewBox.h}`);
-                };
-
-                svg.onmousedown = (e) => {
-                    diagramDrag.active = true;
-                    diagramDrag.startX = e.clientX;
-                    diagramDrag.startY = e.clientY;
-                    diagramDrag.origX = diagramViewBox.x;
-                    diagramDrag.origY = diagramViewBox.y;
-                };
-
-                window.onmousemove = (e) => {
-                    if (!diagramDrag.active) return;
-                    const dx = e.clientX - diagramDrag.startX;
-                    const dy = e.clientY - diagramDrag.startY;
-                    const kx = diagramViewBox.w / svg.clientWidth;
-                    const ky = diagramViewBox.h / svg.clientHeight;
-                    diagramViewBox.x = diagramDrag.origX - dx * kx;
-                    diagramViewBox.y = diagramDrag.origY - dy * ky;
-                    svg.setAttribute('viewBox', `${diagramViewBox.x} ${diagramViewBox.y} ${diagramViewBox.w} ${diagramViewBox.h}`);
-                };
-
-                window.onmouseup = () => { diagramDrag.active = false; };
-            }
-
-            function setDetails(title, chips = [], kv = {}, listTitle = '', listItems = []) {
-                const panel = document.getElementById('diagramDetails');
-                if (!panel) return;
-                const body = panel.querySelector('.details-body');
-                if (!body) return;
-
-                const chipsHtml = chips.map(c => `<span class="details-chip" style="display: inline-block; background: #3498db; color: white; padding: 4px 10px; border-radius: 12px; font-size: 11px; margin-right: 6px; margin-bottom: 6px;">${c}</span>`).join('');
-                const kvHtml = Object.keys(kv).length
-                    ? `<div class="details-kv" style="margin-top: 10px;">${Object.entries(kv).map(([k,v]) => `<div style="margin-bottom: 8px;"><span class="details-k" style="font-weight: 700; color: #555;">${k}:</span> <span style="color: #333;">${v}</span></div>`).join('')}</div>`
-                    : '';
-                const listHtml = (listItems && listItems.length)
-                    ? `<div style="margin-top:10px;"><div class="details-k" style="font-weight: 700; color: #555; margin-bottom: 6px;">${listTitle}</div><ul class="details-list" style="margin: 0; padding-left: 20px; color: #333;">${listItems.map(i => `<li style="margin-bottom: 4px;">${i}</li>`).join('')}</ul></div>`
-                    : '';
-
-                body.innerHTML = `<div style="font-weight:700; margin-bottom:10px; font-size: 16px; color: #2c3e50;">${title}</div>${chipsHtml}${kvHtml}${listHtml}`;
-                panel.style.display = 'block';
-            }
-
-            // Build class index
-            const classes = schemaData.classes;
-            const props = schemaData.properties;
-
-            // Normalize names from prefixed forms (e.g., regen:ResidentialParcel) or IRIs to local names
-            function normName(x) {
-                if (!x) return '';
-                const s = String(x);
-                const byHash = s.split('#');
-                const lastHash = byHash[byHash.length - 1];
-                const bySlash = lastHash.split('/');
-                const lastSlash = bySlash[bySlash.length - 1];
-                const byColon = lastSlash.split(':');
-                return byColon[byColon.length - 1].trim();
-            }
-            function sameName(a, b) {
-                return normName(a).toLowerCase() === normName(b).toLowerCase();
-            }
-            function nameIncludes(a, b) {
-                return normName(a).toLowerCase().includes(normName(b).toLowerCase());
-            }
-
-            // Fallback domain/range mappings from OWL file
-            const propertyDomainRangeFallback = {
-                'hasNearestBusStation': { domain: 'ResidentialParcel', range: 'BusStation' },
-                'hasNearestChildCare': { domain: 'ResidentialParcel', range: 'ChildCareService' },
-                'hasNearestSocialService': { domain: 'ResidentialParcel', range: 'SocialServiceAgency' },
-                'hasNearestSportFacility': { domain: 'ResidentialParcel', range: 'SportFacility' },
-                'hasFacilityRelation': { domain: 'ResidentialParcel', range: 'ParcelFacilityRelation' },
-                'hasProximityRelation': { domain: 'ResidentialParcel', range: 'ParcelProximityRelation' },
-                'connectsParcel': { domain: 'ParcelFacilityRelation', range: 'ResidentialParcel' },
-                'connectsFacility': { domain: 'ParcelFacilityRelation', range: 'PublicFacility' },
-                'connectsParcel1': { domain: 'ParcelProximityRelation', range: 'ResidentialParcel' },
-                'connectsParcel2': { domain: 'ParcelProximityRelation', range: 'ResidentialParcel' },
-                'isNeighborOf': { domain: 'ResidentialParcel', range: 'ResidentialParcel' },
-                'hasDistanceValue': { domain: 'ParcelFacilityRelation', range: 'float' }
-            };
-
-            // Index properties by normalized domain for fast lookup (used by full diagram)
-            const dataPropsByDomain = {};
-            const objProps = [];
-            Object.keys(props).forEach(pn => {
-                const p = props[pn];
-                if (!p) return;
-                if (p.type === 'DatatypeProperty') {
-                    let domains = p.domain || [];
-                    // Fallback: if domain is empty, check fallback map or assume ResidentialParcel
-                    if (domains.length === 0) {
-                        const fb = propertyDomainRangeFallback[pn];
-                        if (fb && fb.domain) {
-                            domains = [fb.domain];
-                        } else {
-                            // Most datatype properties in this ontology belong to ResidentialParcel
-                            domains = ['ResidentialParcel'];
-                        }
-                    }
-                    domains.forEach(d => {
-                        const k = normName(d);
-                        if (!dataPropsByDomain[k]) dataPropsByDomain[k] = [];
-                        dataPropsByDomain[k].push(pn);
-                    });
-                } else if (p.type === 'ObjectProperty') {
-                    // Add fallback domain/range if missing
-                    let pCopy = { ...p };
-                    if ((!pCopy.domain || pCopy.domain.length === 0 || !pCopy.range || pCopy.range.length === 0)) {
-                        const fb = propertyDomainRangeFallback[pn];
-                        if (fb) {
-                            if (!pCopy.domain || pCopy.domain.length === 0) pCopy.domain = [fb.domain];
-                            if (!pCopy.range || pCopy.range.length === 0) pCopy.range = [fb.range];
-                        }
-                    }
-                    objProps.push({ name: pn, p: pCopy });
-                }
-            });
-
-            function hasClass(namePart) {
-                const np = String(namePart || '').toLowerCase();
-                return Object.keys(classes).find(k => normName(k).toLowerCase().includes(np)) || null;
-            }
-
-            // Key classes we want to feature (best effort matching)
-            const clsResidential = hasClass('ResidentialParcel') || hasClass('Parcel') || Object.keys(classes)[0];
-            const clsPFR = hasClass('ParcelFacilityRelation');
-            const clsPublicFacility = hasClass('PublicFacility');
-            const clsSocialFacility = hasClass('SocialFacility');
-            const clsChildCare = hasClass('ChildCare');
-
-            // Left: typology subclasses of ResidentialParcel
-            const typologySubs = Object.keys(classes).filter(cn => {
-                const sc = classes[cn].subClassOf || [];
-                return clsResidential && sc.some(p => sameName(p, clsResidential));
-            }).sort((a,b) => a.localeCompare(b));
-
-            // Right: datatype indicators for ResidentialParcel - use dataPropsByDomain which has fallback logic
-            const parcelDataProps = (dataPropsByDomain[normName(clsResidential)] || []).slice().sort((a,b) => a.localeCompare(b));
-
-            // ParcelFacilityRelation props (datatype) - use dataPropsByDomain which has fallback logic
-            const pfrDataProps = clsPFR ? (dataPropsByDomain[normName(clsPFR)] || []).slice().sort((a,b) => a.localeCompare(b)) : [];
-
-            // Object properties between featured classes
-            const objEdges = Object.keys(props).filter(pn => {
-                const p = props[pn];
-                if (p.type !== 'ObjectProperty') return false;
-                if (!p.domain || !p.range || p.domain.length === 0 || p.range.length === 0) return false;
-                return true;
-            }).map(pn => ({ name: pn, p: props[pn] }));
-
-            // =====================
-            // FULL DIAGRAM MODE - COMPACT DRAGGABLE LAYOUT
-            // =====================
-            if (diagramMode === 'full') {
-                const WFULL = 4000;    // Compact canvas width
-                const HFULL = 5000;    // Compact canvas height
-                diagramViewBox = { x: 0, y: 0, w: WFULL, h: HFULL };
-                svg.setAttribute('viewBox', `${diagramViewBox.x} ${diagramViewBox.y} ${diagramViewBox.w} ${diagramViewBox.h}`);
-
-                // Build parent->children adjacency (normalize comparisons)
-                const parents = {};
-                const children = {};
-                Object.keys(classes).forEach(cn => {
-                    const sc = classes[cn].subClassOf || [];
-                    if (!parents[cn]) parents[cn] = [];
-                    sc.forEach(p => {
-                        const parentKey = Object.keys(classes).find(k => sameName(k, p));
-                        if (parentKey) {
-                            if (!children[parentKey]) children[parentKey] = [];
-                            children[parentKey].push(cn);
-                            parents[cn].push(parentKey);
-                        }
-                    });
-                });
-
-                // Roots: no recognized parent
-                const roots = Object.keys(classes).filter(cn => (parents[cn] || []).length === 0).sort((a,b) => a.localeCompare(b));
-
-                // Compute depth with BFS
-                const depth = {};
-                const queue = [];
-                roots.forEach(r => { depth[r] = 0; queue.push(r); });
-                while (queue.length) {
-                    const cur = queue.shift();
-                    const d0 = depth[cur] || 0;
-                    (children[cur] || []).forEach(ch => {
-                        const nd = d0 + 1;
-                        if (depth[ch] === undefined || nd < depth[ch]) {
-                            depth[ch] = nd;
-                            queue.push(ch);
-                        }
-                    });
-                }
-
-                // Order nodes by (depth, name)
-                const ordered = Object.keys(classes)
-                    .sort((a,b) => (depth[a] - depth[b]) || a.localeCompare(b));
-
-                // Layout constants - Minimal boxes that fit content
-                const colW = 600;        // Column width for arrow space
-                const minBoxW = 280;     // Minimum box width
-                const maxBoxW = 400;     // Maximum box width
-                const marginX = 80;      // Left margin
-                const marginY = 80;      // Top margin
-                const minGapY = 60;      // Gap between boxes
-
-                // Place nodes by columns (depth) and rows within each depth
-                const rowsByDepth = {};
-                ordered.forEach(cn => {
-                    const d = depth[cn] ?? 0;
-                    if (!rowsByDepth[d]) rowsByDepth[d] = [];
-                    rowsByDepth[d].push(cn);
-                });
-
-                const boxByClass = {};
-                const boxPositions = {};  // Store custom positions for dragged boxes
-                const arrowElements = [];  // Store arrow elements for redrawing
-                // Track current Y position for each column to avoid overlaps
-                const colYPos = {};
-
-                // Draw class boxes with all (or many) datatype props inside
-                Object.keys(rowsByDepth).map(x => parseInt(x,10)).sort((a,b)=>a-b).forEach(d => {
-                    const arr = rowsByDepth[d];
-                    if (!colYPos[d]) colYPos[d] = marginY;
-
-                    arr.forEach(cn => {
-                        const x = marginX + d * colW;
-                        const y = colYPos[d];
-
-                        const local = normName(cn);
-                        const dp = (dataPropsByDomain[local] || []).slice().sort((a,b)=>a.localeCompare(b));
-                        // SHOW ALL PROPERTIES - no limit
-                        const shown = dp;
-
-                        // Calculate box width based on content
-                        const longestProp = shown.length > 0 ? Math.max(...shown.map(p => p.length)) : local.length;
-                        const estimatedWidth = Math.min(maxBoxW, Math.max(minBoxW, longestProp * 7 + 50));
-                        const boxW = estimatedWidth;
-
-                        // Calculate box height to fit ALL properties compactly
-                        const baseHeight = 70;           // Base height for class name + label
-                        const propLineHeight = 16;       // Height per property line
-                        const headerHeight = 20;         // Height for "properties" header
-                        const padding = 15;              // Bottom padding
-                        const h = baseHeight + (shown.length ? (headerHeight + shown.length * propLineHeight + padding) : 0);
-
-                        const box = drawBox(`full:${cn}`, x, y, boxW, h, local, classes[cn].label ? String(classes[cn].label).slice(0, 80) : '', { fill: 'white' });
-                        box.offsetX = 0;
-                        box.offsetY = 0;
-                        boxByClass[cn] = box;
-
-                        // Update Y position for next box in this column
-                        colYPos[d] = y + h + minGapY;
-
-                        // datatype props list - ADD TO BOX GROUP with ABSOLUTE coords
-                        if (diagramFilters.dataProps && dp.length) {
-                            let ty = y + 70;  // Absolute coordinates!
-                            const head = el('text', { x: x + 10, y: ty, 'font-size': '11', 'font-weight': '700', fill: 'rgba(0,0,0,0.65)' });
-                            head.textContent = `properties (${shown.length})`;
-                            box.g.appendChild(head);
-                            ty += 20;
-                            shown.forEach(pn => {
-                                const t = el('text', { x: x + 12, y: ty, 'font-size': '10', fill: 'rgba(0,0,0,0.85)' });
-                                t.textContent = pn;
-                                t.style.cursor = 'pointer';
-                                t.addEventListener('click', (e) => {
-                                    e.stopPropagation();  // Prevent box drag
-                                    const p = props[pn];
-                                    setDetails(pn,
-                                        [p.type],
-                                        { label: p.label || '-', domain: (p.domain || []).join(', ') || '-', range: (p.range || []).join(', ') || '-' },
-                                        '', []
-                                    );
-                                });
-                                box.g.appendChild(t);
-                                ty += 16;
-                            });
-                        }
-                    });
-                });
-
-                // Draw subClassOf edges WITH LABELS
-                if (diagramFilters.subClass) {
-                    ordered.forEach(cn => {
-                        const ps = parents[cn] || [];
-                        ps.forEach(pn => {
-                            const a = boxByClass[pn];
-                            const b = boxByClass[cn];
-                            if (!a || !b) return;
-                            const arrowData = { from: pn, to: cn, label: 'subClassOf', dashed: true, light: true };
-                            arrowElements.push(arrowData);
-                            drawArrow(a.x + a.offsetX + a.w, a.y + a.offsetY + a.h/2, b.x + b.offsetX, b.y + b.offsetY + b.h/2, 'subClassOf', true, true, true);
-                        });
-                    });
-                }
-
-                // Draw object property edges WITH LABELS
-                if (diagramFilters.objProps) {
-                    objProps.forEach(({ name, p }) => {
-                        const d0 = (p.domain && p.domain.length) ? p.domain[0] : null;
-                        const r0 = (p.range && p.range.length) ? p.range[0] : null;
-                        if (!d0 || !r0) return;
-                        const domKey = Object.keys(classes).find(k => sameName(k, d0));
-                        const ranKey = Object.keys(classes).find(k => sameName(k, r0));
-                        if (!domKey || !ranKey) return;
-                        const a = boxByClass[domKey];
-                        const b = boxByClass[ranKey];
-                        if (!a || !b) return;
-
-                        // Draw all nearby connections WITH LABELS
-                        const depthA = depth[domKey] ?? 0;
-                        const depthB = depth[ranKey] ?? 0;
-                        const depthDiff = Math.abs(depthA - depthB);
-                        const vertDist = Math.abs(a.y - b.y);
-
-                        // Draw if reasonably close
-                        if (depthDiff <= 2 || vertDist < 800) {
-                            const arrowData = { from: domKey, to: ranKey, label: name, dashed: false, light: false };
-                            arrowElements.push(arrowData);
-                            drawArrow(a.x + a.offsetX + a.w, a.y + a.offsetY + a.h/2, b.x + b.offsetX, b.y + b.offsetY + b.h/2, name, false, false, true);
-                        }
-                    });
-                }
-
-                // Function to redraw all arrows based on current box positions
-                function redrawAllArrows() {
-                    // Remove all existing arrows
-                    const arrows = svg.querySelectorAll('path[data-arrow="true"], rect[data-arrow-bg="true"], text[data-arrow-label="true"]');
-                    arrows.forEach(el => el.remove());
-
-                    // Redraw all arrows
-                    arrowElements.forEach(({ from, to, label, dashed, light }) => {
-                        const a = boxByClass[from];
-                        const b = boxByClass[to];
-                        if (!a || !b) return;
-                        drawArrow(
-                            a.x + a.offsetX + a.w,
-                            a.y + a.offsetY + a.h/2,
-                            b.x + b.offsetX,
-                            b.y + b.offsetY + b.h/2,
-                            label,
-                            dashed,
-                            light,
-                            true
-                        );
-                    });
-                }
-
-                // Make all boxes draggable
-                let draggedBox = null;
-                let dragStartX = 0;
-                let dragStartY = 0;
-
-                Object.keys(boxByClass).forEach(cn => {
-                    const box = boxByClass[cn];
-                    const boxGroup = box.g;
-
-                    boxGroup.addEventListener('mousedown', (e) => {
-                        if (e.button !== 0) return;
-                        draggedBox = box;
-                        const pt = svg.createSVGPoint();
-                        pt.x = e.clientX;
-                        pt.y = e.clientY;
-                        const svgP = pt.matrixTransform(svg.getScreenCTM().inverse());
-                        dragStartX = svgP.x - box.offsetX;
-                        dragStartY = svgP.y - box.offsetY;
-                        boxGroup.style.cursor = 'grabbing';
-                        e.stopPropagation();
-                        e.preventDefault();
-                    });
-                });
-
-                svg.addEventListener('mousemove', (e) => {
-                    if (!draggedBox) return;
-                    const pt = svg.createSVGPoint();
-                    pt.x = e.clientX;
-                    pt.y = e.clientY;
-                    const svgP = pt.matrixTransform(svg.getScreenCTM().inverse());
-
-                    draggedBox.offsetX = svgP.x - dragStartX;
-                    draggedBox.offsetY = svgP.y - dragStartY;
-
-                    draggedBox.g.setAttribute('transform', `translate(${draggedBox.offsetX}, ${draggedBox.offsetY})`);
-                    redrawAllArrows();
-                    e.preventDefault();
-                });
-
-                svg.addEventListener('mouseup', () => {
-                    if (draggedBox) {
-                        draggedBox.g.style.cursor = 'move';
-                        draggedBox = null;
-                    }
-                });
-
-                // Set cursor for all boxes
-                Object.keys(boxByClass).forEach(cn => {
-                    boxByClass[cn].g.style.cursor = 'move';
-                });
-
-                // default details
-                setDetails('Full Ontology Diagram', ['Interactive - Drag boxes to rearrange'], {
-                    mode: 'full',
-                    hint: 'Drag boxes to move them. Mouse wheel to zoom. Pan with right-click drag.'
-                }, '', []);
-
-                bindPanZoom(svg);
-
-                DIAGRAM_RENDERED = true;
-                return;
-            }
-
-            // --- Presentation layout coordinates ---
-            const W = 1800;
-            const H = 1000;
-            diagramViewBox = { x: 0, y: 0, w: W, h: H };
-            svg.setAttribute('viewBox', `${diagramViewBox.x} ${diagramViewBox.y} ${diagramViewBox.w} ${diagramViewBox.h}`);
-
-            // Background groups
-            const bg = el('rect', { x: 0, y: 0, width: W, height: H, fill: 'white' });
-            svg.appendChild(bg);
-
-            // Markers
-            const defs = el('defs');
-            const mk = el('marker', { id: 'arrow', markerWidth: '10', markerHeight: '10', refX: '8', refY: '3', orient: 'auto' });
-            mk.appendChild(el('path', { d: 'M0,0 L8,3 L0,6 Z', fill: 'rgba(0,0,0,0.6)' }));
-            defs.appendChild(mk);
-            const mk2 = el('marker', { id: 'arrowLight', markerWidth: '10', markerHeight: '10', refX: '8', refY: '3', orient: 'auto' });
-            mk2.appendChild(el('path', { d: 'M0,0 L8,3 L0,6 Z', fill: 'rgba(0,0,0,0.25)' }));
-            defs.appendChild(mk2);
-            svg.appendChild(defs);
-
-            // Box helper
-            function drawBox(id, x, y, w, h, title, subtitle = '', style = {}) {
-                const g = el('g', { 'data-diagram-id': id });
-                const rect = el('rect', {
-                    x, y, width: w, height: h, rx: 12, ry: 12,
-                    fill: style.fill || 'white',
-                    stroke: style.stroke || 'rgba(0,0,0,0.35)',
-                    'stroke-width': style.strokeWidth || '1.5'
-                });
-                g.appendChild(rect);
-
-                const t = el('text', { x: x + 14, y: y + 22, 'font-size': '14', 'font-weight': '700', fill: 'rgba(0,0,0,0.86)' });
-                t.textContent = title;
-                g.appendChild(t);
-
-                if (subtitle) {
-                    const s = el('text', { x: x + 14, y: y + 44, 'font-size': '12', fill: 'rgba(0,0,0,0.55)' });
-                    s.textContent = subtitle;
-                    g.appendChild(s);
-                }
-
-                // interactions
-                g.style.cursor = 'pointer';
-                g.addEventListener('mouseenter', () => {
-                    rect.setAttribute('stroke', 'rgba(52,152,219,0.95)');
-                    rect.setAttribute('stroke-width', '2.4');
-                });
-                g.addEventListener('mouseleave', () => {
-                    rect.setAttribute('stroke', style.stroke || 'rgba(0,0,0,0.35)');
-                    rect.setAttribute('stroke-width', style.strokeWidth || '1.5');
-                });
-
-                g.addEventListener('click', () => {
-                    // if it's a class, show its schema details
-                    if (classes[title]) {
-                        const c = classes[title];
-                        setDetails(title,
-                            ['Class'],
-                            {
-                                label: c.label || '-',
-                                instances: (c.instances_count !== undefined ? c.instances_count : 0),
-                                comment: c.comment || '-'
-                            },
-                            'subClassOf',
-                            (c.subClassOf || []).length ? c.subClassOf : ['(none)']
-                        );
-                    } else {
-                        setDetails(title, ['Box'], {}, '', []);
-                    }
-                });
-
-                svg.appendChild(g);
-                return { g, x, y, w, h };
-            }
-
-            function drawArrow(x1, y1, x2, y2, label, dashed = false, light = false, showLabel = true) {
-                const path = el('path', {
-                    d: `M ${x1} ${y1} C ${x1 + 80} ${y1}, ${x2 - 80} ${y2}, ${x2} ${y2}`,
-                    fill: 'none',
-                    stroke: light ? 'rgba(0,0,0,0.25)' : 'rgba(0,0,0,0.50)',
-                    'stroke-width': light ? '2' : '2.5',
-                    'marker-end': light ? 'url(#arrowLight)' : 'url(#arrow)',
-                    'data-arrow': 'true'
-                });
-                if (dashed) path.setAttribute('stroke-dasharray', '8 8');
-                svg.appendChild(path);
-
-                // Show label with background for better visibility
-                if (showLabel) {
-                    const tx = (x1 + x2) / 2;
-                    const ty = (y1 + y2) / 2;
-
-                    // Add white background rectangle for label
-                    const bbox = { x: tx - 60, y: ty - 12, width: 120, height: 20 };
-                    const bg = el('rect', {
-                        x: bbox.x, y: bbox.y, width: bbox.width, height: bbox.height,
-                        fill: 'white', stroke: 'rgba(0,0,0,0.2)', 'stroke-width': '1',
-                        rx: 4, ry: 4,
-                        'data-arrow-bg': 'true'
-                    });
-                    svg.appendChild(bg);
-
-                    const t = el('text', {
-                        x: tx, y: ty + 5,
-                        'font-size': '13',
-                        'font-weight': '600',
-                        fill: light ? 'rgba(0,0,0,0.55)' : 'rgba(0,0,0,0.75)',
-                        'text-anchor': 'middle',
-                        'data-arrow-label': 'true'
-                    });
-                    t.textContent = label;
-                    svg.appendChild(t);
-
-                    // click label => property details
-                    t.style.cursor = 'pointer';
-                    t.addEventListener('click', () => {
-                        const p = props[label];
-                        if (!p) return;
-                        setDetails(label,
-                            [p.type],
-                            {
-                                label: p.label || '-',
-                                domain: (p.domain || []).join(', ') || '-',
-                                range: (p.range || []).join(', ') || '-'
-                            },
-                            '',
-                            []
-                        );
-                    });
-                }
-            }
-
-            // --- Draw featured boxes ---
-            const boxResidential = drawBox(clsResidential, 560, 400, 300, 80, clsResidential, 'datatypeProperties → indicators', { fill: 'rgba(52, 152, 219, 0.1)' });
-
-            // Left typology list - more compact
-            const leftX = 60;
-            const startY = 180;
-            const stepY = 64;
-            const typBoxes = [];
-            typologySubs.slice(0, 12).forEach((name, i) => {
-                typBoxes.push(drawBox(name, leftX, startY + i * stepY, 340, 52, name, 'subClassOf', { fill: 'white' }));
-            });
-
-            // If too many typologies, add a note box
-            if (typologySubs.length > 12) {
-                drawBox('MoreTypologies', leftX, startY + 12 * stepY, 340, 52, `+${typologySubs.length - 12} more typologies`, '', { fill: 'white' });
-            }
-
-            // Top relation/facility boxes - better spacing
-            const topY = 60;
-            const bPFR = clsPFR ? drawBox(clsPFR, 520, topY, 340, 60, clsPFR, 'relation entity', { fill: 'white' }) : null;
-            const bPublic = clsPublicFacility ? drawBox(clsPublicFacility, 920, topY, 300, 60, clsPublicFacility, '', { fill: 'white' }) : null;
-            const bSocial = clsSocialFacility ? drawBox(clsSocialFacility, 920, topY + 75, 300, 60, clsSocialFacility, '', { fill: 'white' }) : null;
-            const bChild = clsChildCare ? drawBox(clsChildCare, 920, topY + 150, 300, 60, clsChildCare, '', { fill: 'white' }) : null;
-
-            // Right indicators table box - LARGER to show ALL properties
-            const allPropsCount = parcelDataProps.length;
-            const boxHeight = Math.max(620, 100 + allPropsCount * 18 + 50);
-            const indBox = drawBox('ParcelIndicators', 1060, 320, 700, boxHeight, 'Parcel indicators (xsd:float)', `domain: ${clsResidential} | Total: ${allPropsCount} properties`, { fill: 'white' });
-
-            // Render indicator list inside the indicators box - SHOW ALL
-            const listG = el('g');
-            const listX = 1080;
-            let listY = 370;
-            const shown = parcelDataProps; // Show ALL properties, not limited
-
-            const head = el('text', { x: listX, y: listY, 'font-size': '12', 'font-weight': '700', fill: 'rgba(0,0,0,0.75)' });
-            head.textContent = 'datatypeProperties';
-            listG.appendChild(head);
-            listY += 22;
-
-            shown.forEach(pn => {
-                const t = el('text', { x: listX, y: listY, 'font-size': '12', fill: 'rgba(0,0,0,0.75)' });
-                t.textContent = pn;
-                t.style.cursor = 'pointer';
-                t.addEventListener('click', () => {
-                    const p = props[pn];
-                    setDetails(pn,
-                        [p.type],
-                        {
-                            label: p.label || '-',
-                            domain: (p.domain || []).join(', ') || '-',
-                            range: (p.range || []).join(', ') || '-'
-                        },
-                        '',
-                        []
-                    );
-                });
-                listG.appendChild(t);
-                listY += 18;
-            });
-
-            // No need for "more" text since we show all properties now
-
-            svg.appendChild(listG);
-
-            // PFR datatype props box (if exists)
-            let bPFRProps = null;
-            if (clsPFR && diagramFilters.dataProps) {
-                bPFRProps = drawBox('PFRProps', 520, 150, 320, 140, 'ParcelFacilityRelation props', `domain: ${clsPFR}`, { fill: 'white' });
-                const pg = el('g');
-                let py = 190;
-                pfrDataProps.slice(0, 5).forEach(pn => {
-                    const t = el('text', { x: 540, y: py, 'font-size': '12', fill: 'rgba(0,0,0,0.75)' });
-                    t.textContent = pn;
-                    t.style.cursor = 'pointer';
-                    t.addEventListener('click', () => {
-                        const p = props[pn];
-                        setDetails(pn,
-                            [p.type],
-                            {
-                                label: p.label || '-',
-                                domain: (p.domain || []).join(', ') || '-',
-                                range: (p.range || []).join(', ') || '-'
-                            },
-                            '',
-                            []
-                        );
-                    });
-                    pg.appendChild(t);
-                    py += 18;
-                });
-                svg.appendChild(pg);
-            }
-
-            // --- Draw edges according to filters ---
-            if (diagramFilters.subClass) {
-                typBoxes.forEach(tb => {
-                    drawArrow(tb.x + tb.w, tb.y + tb.h / 2, boxResidential.x, boxResidential.y + boxResidential.h / 2, 'subClassOf', true, true);
-                });
-            }
-
-            if (diagramFilters.dataProps) {
-                // ResidentialParcel -> indicators box
-                drawArrow(boxResidential.x + boxResidential.w, boxResidential.y + boxResidential.h / 2, indBox.x, indBox.y + 40, 'datatypeProperties', false, true);
-                if (bPFR && bPFRProps) {
-                    drawArrow(bPFR.x + bPFR.w / 2, bPFR.y + bPFR.h, bPFRProps.x + bPFRProps.w / 2, bPFRProps.y, 'datatypeProperties', false, true);
-                }
-            }
-
-            if (diagramFilters.objProps) {
-                // Draw object properties only when they connect featured classes
-                objEdges.forEach(({ name, p }) => {
-                    const d = (p.domain && p.domain.length ? p.domain[0] : null);
-                    const r = (p.range && p.range.length ? p.range[0] : null);
-                    if (!d || !r) return;
-
-                    const featured = [clsResidential, clsPFR, clsPublicFacility, clsSocialFacility, clsChildCare].filter(Boolean);
-                    const dOk = featured.some(f => sameName(d, f));
-                    const rOk = featured.some(f => sameName(r, f));
-                    if (!dOk || !rOk) return;
-
-                    // Map to box centers
-                    function boxCenter(cn) {
-                        if (sameName(cn, clsResidential)) return { x: boxResidential.x + boxResidential.w, y: boxResidential.y + boxResidential.h / 2 };
-                        if (clsPFR && bPFR && sameName(cn, clsPFR)) return { x: bPFR.x + bPFR.w, y: bPFR.y + bPFR.h / 2 };
-                        if (clsPublicFacility && bPublic && sameName(cn, clsPublicFacility)) return { x: bPublic.x, y: bPublic.y + bPublic.h / 2 };
-                        if (clsSocialFacility && bSocial && sameName(cn, clsSocialFacility)) return { x: bSocial.x, y: bSocial.y + bSocial.h / 2 };
-                        if (clsChildCare && bChild && sameName(cn, clsChildCare)) return { x: bChild.x, y: bChild.y + bChild.h / 2 };
-                        return null;
-                    }
-
-                    const s = boxCenter(d);
-                    const t = boxCenter(r);
-                    if (!s || !t) return;
-
-                    drawArrow(s.x, s.y, t.x, t.y, name, false, false);
-                });
-            }
-
-            // Bind pan/zoom for summary diagram mode
-            bindPanZoom(svg);
-
-            // default details
-            setDetails('Ontology Diagram', ['Interactive'], {
-                hint: 'Use mouse wheel to zoom; drag to pan.',
-                filters: `subClassOf=${diagramFilters.subClass}, objectProps=${diagramFilters.objProps}, datatypeProps=${diagramFilters.dataProps}`
-            }, '', []);
-
-            DIAGRAM_RENDERED = true;
-        }
-
-        function resetDiagram() {
-            // If diagram_data.json provides a viewBox, use it; otherwise fall back.
-            const dd = DIAGRAM_DATA || window.DIAGRAM_DATA;
-            const vb = (dd && dd.layout && dd.layout.viewBox) ? dd.layout.viewBox : null;
-            diagramViewBox = vb ? { x: vb.x, y: vb.y, w: vb.w, h: vb.h } : { x: 0, y: 0, w: 1600, h: 900 };
-            renderOntologyDiagram();
-        }
-
-        function highlightDiagram(query) {
-            const svg = document.getElementById('ontology-diagram');
-            if (!svg) return;
-            const q = (query || '').toLowerCase();
-
-            const groups = svg.querySelectorAll('g[data-diagram-id]');
-            groups.forEach(g => {
-                const id = (g.getAttribute('data-diagram-id') || '').toLowerCase();
-                const rect = g.querySelector('rect');
-                if (!rect) return;
-
-                if (!q) {
-                    rect.setAttribute('opacity', '1');
-                    return;
-                }
-
-                if (id.includes(q)) {
-                    rect.setAttribute('opacity', '1');
-                } else {
-                    rect.setAttribute('opacity', '0.22');
-                }
-            });
-        }
-
-        function downloadDiagram() {
-            const svg = document.getElementById('ontology-diagram');
-            if (!svg) return;
-
-            // Serialize SVG
-            const serializer = new XMLSerializer();
-            let source = serializer.serializeToString(svg);
-
-            // Ensure namespace
-            if (!source.match(/^<svg[^>]+xmlns="http:\/\/www\.w3\.org\/2000\/svg"/)) {
-                source = source.replace('<svg', '<svg xmlns="http://www.w3.org/2000/svg"');
-            }
-
-            const blob = new Blob([source], { type: 'image/svg+xml;charset=utf-8' });
-            const url = URL.createObjectURL(blob);
-
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'ontology_diagram.svg';
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-
-            URL.revokeObjectURL(url);
-        }
-
-        function zoomIn() {
-            const svg = document.getElementById('ontology-diagram');
-            if (!svg) return;
-            const scale = 0.8; // Zoom in by 20%
-            diagramViewBox.w *= scale;
-            diagramViewBox.h *= scale;
-            svg.setAttribute('viewBox', `${diagramViewBox.x} ${diagramViewBox.y} ${diagramViewBox.w} ${diagramViewBox.h}`);
-        }
-
-        function zoomOut() {
-            const svg = document.getElementById('ontology-diagram');
-            if (!svg) return;
-            const scale = 1.25; // Zoom out by 25%
-            diagramViewBox.w *= scale;
-            diagramViewBox.h *= scale;
-            svg.setAttribute('viewBox', `${diagramViewBox.x} ${diagramViewBox.y} ${diagramViewBox.w} ${diagramViewBox.h}`);
-        }
-        
-        
         let queryData = null;
         let QUERY_DATA = null;
         

@@ -89,27 +89,28 @@
         try {
             // Load in sequence (not parallel) to show progress
             updateStatus('Loading network data... (1/4)');
-            window.NETWORK_DATA = await loadJSON('network_data.json', 'Network data');
+            window.NETWORK_DATA = await loadJSON('network_data.json?v=20260203-NET1869', 'Network data');
+            if (!window.NETWORK_DATA) throw new Error('Missing network_data.json');
             await new Promise(resolve => setTimeout(resolve, 100));
             
-            updateStatus('Loading schema data... (2/4)');
+            updateStatus('Loading schema data... (2/3)');
             window.SCHEMA_DATA = await loadJSON('schema_data.json', 'Schema data');
+            if (!window.SCHEMA_DATA) throw new Error('Missing schema_data.json');
             await new Promise(resolve => setTimeout(resolve, 100));
             
-            updateStatus('Loading diagram data... (3/4)');
-            window.DIAGRAM_DATA = await loadJSON('diagram_data.json', 'Diagram data');
-            await new Promise(resolve => setTimeout(resolve, 100));
-            
-            updateStatus('Loading query data... (4/5 - Large file, please wait)');
+            updateStatus('Loading query data... (3/4 - Large file, please wait)');
             window.QUERY_DATA = await loadJSON('query_data.json', 'Query data');
+            if (!window.QUERY_DATA) throw new Error('Missing query_data.json');
             await new Promise(resolve => setTimeout(resolve, 100));
 
-            updateStatus('Loading GPR density data... (5/6)');
+            updateStatus('Loading GPR density data... (4/5)');
             window.GPR_ROWS = await loadCSV('parcel normolized sum.csv', 'GPR density data');
+            if (!window.GPR_ROWS) throw new Error('Missing parcel normolized sum.csv');
             await new Promise(resolve => setTimeout(resolve, 100));
 
-            updateStatus('Loading latent typology results... (6/7)');
+            updateStatus('Loading latent typology results... (5/6)');
             window.LATENT_TYPOLOGY_RESULTS = await loadJSON('latent_typologies.srj', 'Latent typology results');
+            if (!window.LATENT_TYPOLOGY_RESULTS) throw new Error('Missing latent_typologies.srj');
             await new Promise(resolve => setTimeout(resolve, 100));
             if (window.LATENT_TYPOLOGY_RESULTS && window.LATENT_TYPOLOGY_RESULTS.results) {
                 window.LATENT_TYPOLOGY_RESULTS_COUNT = window.LATENT_TYPOLOGY_RESULTS.results.bindings?.length || 0;
@@ -117,12 +118,14 @@
                 window.LATENT_TYPOLOGY_RESULTS_COUNT = 0;
             }
 
-            updateStatus('Loading Q4A context results... (7/8)');
+            updateStatus('Loading Q4A context results... (6/7)');
             window.Q4A_CONTEXT_RESULTS = await loadJSON('q4a_context.srj', 'Q4A context results');
+            if (!window.Q4A_CONTEXT_RESULTS) throw new Error('Missing q4a_context.srj');
             await new Promise(resolve => setTimeout(resolve, 100));
 
-            updateStatus('Loading Q4B context summary... (8/8)');
+            updateStatus('Loading Q4B context summary... (7/7)');
             window.Q4B_CONTEXT_SUMMARY = await loadJSON('q4b_context_summary.srj', 'Q4B context summary');
+            if (!window.Q4B_CONTEXT_SUMMARY) throw new Error('Missing q4b_context_summary.srj');
             await new Promise(resolve => setTimeout(resolve, 100));
             
             // Initialize the application
@@ -182,14 +185,14 @@
         } catch (error) {
             console.error('Loading error:', error);
             updateStatus('Error loading application');
-            alert('Failed to load data files. Please ensure all files are in the same directory:\n' +
+            alert('Failed to load data files.\n' + (error && error.message ? `Reason: ${error.message}\n` : '') +
+                  'Please ensure all files are in the same directory:\n' +
                   '- index.html\n' +
                   '- styles.css\n' +
                   '- app.js\n' +
                   '- loader.js\n' +
                   '- network_data.json\n' +
                   '- schema_data.json\n' +
-                  '- diagram_data.json\n' +
                   '- query_data.json');
         }
     }

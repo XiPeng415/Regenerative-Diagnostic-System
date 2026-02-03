@@ -28,9 +28,7 @@
     <nav>
         <button class="nav-tab active" onclick="switchPage('query')">Query Assistant</button>
         <button class="nav-tab" onclick="switchPage('network')">Network View</button>
-        <button class="nav-tab" onclick="switchPage('diagram')">Ontology Diagram</button>
         <button class="nav-tab" onclick="switchPage('schema')">Ontology Schema</button>
-        <button class="nav-tab" onclick="switchPage('viz')">Advanced Visualizations</button>
     </nav>
     
     <!-- Query Page -->
@@ -180,25 +178,7 @@
         </div>
     </div>
     
-    <!-- Ontology Diagram Page -->
-    <div id="diagram-page" class="page">
-        <div class="diagram-container">
-            <div class="diagram-controls">
-                <button class="btn" id="toggleDiagramMode">Switch to Summary Diagram</button>
-                <input type="text" id="diagramSearch" class="search-input" placeholder="Search classes...">
-                <button class="btn" onclick="zoomIn()">Zoom In (+)</button>
-                <button class="btn" onclick="zoomOut()">Zoom Out (-)</button>
-                <button class="btn" onclick="resetDiagram()">Reset View</button>
-                <button class="btn btn-secondary" onclick="downloadDiagram()">Download SVG</button>
-            </div>
-            <div class="diagram-info-panel" id="diagramDetails" style="position: absolute; top: 80px; right: 20px; width: 280px; background: white; border: 1px solid #ddd; border-radius: 8px; padding: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); display: none;">
-                <div class="details-body"></div>
-            </div>
-            <div class="diagram-canvas">
-                <svg id="ontology-diagram" class="diagram-svg"></svg>
-            </div>
-        </div>
-    </div>
+    
     
     <!-- Schema Page -->
     <div id="schema-page" class="page">
@@ -210,7 +190,7 @@
             
             <div class="schema-section">
                 <h2>Classes</h2>
-                <div id="classList" class="class-grid"></div>
+                <div id="classList" class="class-sections"></div>
             </div>
             
             <div class="schema-section">
@@ -220,41 +200,11 @@
         </div>
     </div>
 
-    <!-- Advanced Visualizations Page -->
-    <div id="viz-page" class="page">
-        <div class="viz-container">
-            <div class="viz-controls">
-                <button class="btn" id="showSankey" onclick="showVisualization('sankey')">Sankey Flow Diagram</button>
-                <button class="btn" id="showSunburst" onclick="showVisualization('sunburst')">Radial Sunburst Chart</button>
-            </div>
-
-            <!-- Sankey Diagram -->
-            <div id="sankey-container" class="viz-section" style="display: none;">
-                <h2>Knowledge Graph Flow: Parcels → Relationships → Facilities</h2>
-                <p style="color: #7f8c8d; margin-bottom: 10px;">Interactive flow visualization - Hover for details, Click nodes to highlight connections</p>
-                <div id="sankeyStats" style="margin-bottom: 15px; padding: 15px; background: #f8f9fa; border-radius: 8px; display: none;">
-                    <div style="display: flex; gap: 30px; flex-wrap: wrap;">
-                        <div><strong>Total Parcels:</strong> <span id="totalParcels">0</span></div>
-                        <div><strong>Total Connections:</strong> <span id="totalConnections">0</span></div>
-                        <div><strong>Facility Types:</strong> <span id="facilityTypes">0</span></div>
-                    </div>
-                </div>
-                <div id="sankeyChart" style="width: 100%; height: 700px; position: relative;"></div>
-                <div id="sankeyTooltip" style="position: absolute; display: none; background: white; padding: 12px; border: 2px solid #3498db; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); pointer-events: none; z-index: 1000;"></div>
-            </div>
-
-            <!-- Sunburst Chart -->
-            <div id="sunburst-container" class="viz-section" style="display: none;">
-                <h2>Hierarchical View: Singapore Regenerative Knowledge Graph</h2>
-                <p style="color: #7f8c8d; margin-bottom: 20px;">Interactive radial visualization of the knowledge graph hierarchy</p>
-                <div id="sunburstChart" style="width: 100%; height: 700px; display: flex; justify-content: center; align-items: center;"></div>
-            </div>
-        </div>
-    </div>
+    
 
     <!-- Load JavaScript -->
-    <script src="loader.v2.js?v=20260203-Q4A4"></script>
-    <script src="app.v7.js?v=20260203-Q4A4"></script>
+    <script src="loader.js?v=20260203-NET1869"></script>
+    <script src="app.js?v=20260204-NET1869b"></script>
     <script>
         // Verification script - check if map functions are loaded
         window.addEventListener('load', function() {
@@ -526,12 +476,7 @@
 
         // Initialize first visualization when page loads
         window.addEventListener('load', function() {
-            // Wait a bit for data to load
-            setTimeout(() => {
-                if (document.getElementById('viz-page').classList.contains('active')) {
-                    showVisualization('sankey');
-                }
-            }, 1000);
+            // No advanced visualizations page.
         });
     </script>
 </body>

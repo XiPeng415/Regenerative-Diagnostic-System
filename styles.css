@@ -366,6 +366,21 @@
             grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
             gap: 20px;
         }
+
+        .class-sections {
+            display: block;
+        }
+
+        .class-section {
+            margin-bottom: 28px;
+        }
+
+        .class-section-title {
+            font-size: 1.05em;
+            font-weight: 700;
+            color: #34495e;
+            margin: 6px 0 12px;
+        }
         
         .class-card {
             border: 1px solid #e0e0e0;
@@ -755,14 +770,6 @@
 
     
 
-/* Ontology diagram (ensure visible area) */
-#ontology-diagram{
-  width: 100%;
-  height: 720px;
-  background: #fff;
-  border: 1px solid rgba(0,0,0,0.12);
-  border-radius: 12px;
-}
 /* Map Section Styles */
 .map-section {
     background: white;
