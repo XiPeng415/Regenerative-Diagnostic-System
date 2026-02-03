@@ -39,6 +39,7 @@
             <div class="query-input-section">
                 <h2>Natural Language Query Interface</h2>
                 
+                
                 <div class="query-input-wrapper">
                     <input type="text" id="queryInput" class="query-input" 
                            placeholder="Ask a question about the knowledge graph in natural language...">
@@ -49,34 +50,34 @@
                     <h3>Example Queries (Click to Try)</h3>
                     <p style="color: #7f8c8d; font-size: 0.9em; margin-bottom: 20px;">Demonstrating complex multi-criteria knowledge graph queries</p>
 
-                    <div class="example-query" onclick="loadExample('Find TransitOrientedParcels with mobility > 0.8')">
-                        <div class="example-title">High Mobility Transit Analysis</div>
-                        <div class="example-text">Find TransitOrientedParcels with mobility > 0.8</div>
-                        <div style="font-size: 0.85em; color: #95a5a6; margin-top: 5px;">Complex: Class-based filtering + dimension score threshold</div>
+                    <div class="example-query" onclick="loadExample('Which parcels have balanced regenerative preconditions')">
+                        <div class="example-title">Q1. Balanced Regenerative Preconditions</div>
+                        <div class="example-text">Which parcels do not exhibit any dominant limiting component and therefore possess balanced regenerative preconditions?</div>
+                        <div style="font-size: 0.85em; color: #95a5a6; margin-top: 5px;">Complex: Multi-dimensional balance analysis + no limiting constraint detection</div>
                     </div>
 
-                    <div class="example-query" onclick="loadExample('Find communities where > 80% are EcologicalChampionParcels')">
-                        <div class="example-title">Ecological Community Detection</div>
-                        <div class="example-text">Find communities where > 80% are EcologicalChampionParcels</div>
-                        <div style="font-size: 0.85em; color: #95a5a6; margin-top: 5px;">Complex: Graph traversal + neighbor type analysis + threshold filtering</div>
+                    <div class="example-query" onclick="loadExample('Which parcels are constrained primarily by one domain rather than systemic deficiency')">
+                        <div class="example-title">Q2. Single-Domain Constraint Detection</div>
+                        <div class="example-text">Which parcels are constrained primarily by one domain rather than systemic deficiency?</div>
+                        <div style="font-size: 0.85em; color: #95a5a6; margin-top: 5px;">Complex: Limiting dimension detection + deficit gap + RCI guardrail</div>
                     </div>
 
-                    <div class="example-query" onclick="loadExample('Find SocialServiceHubParcel with social score > 0.8')">
-                        <div class="example-title">High Social Performance Hubs</div>
-                        <div class="example-text">Find SocialServiceHubParcel with social score > 0.8</div>
-                        <div style="font-size: 0.85em; color: #95a5a6; margin-top: 5px;">Complex: Type-specific query + multi-dimensional threshold filtering</div>
+                    <div class="example-query" onclick="loadExample('Which typologies have latent regenerative potential')">
+                        <div class="example-title">Q3. Typologies With Latent Regenerative Potential</div>
+                        <div class="example-text">Which typologies show strong ecological + social capacity but are held back by mobility?</div>
+                        <div style="font-size: 0.85em; color: #95a5a6; margin-top: 5px;">Clear: Eco–social strength + mobility deficit filter + intervention priority ranking</div>
                     </div>
 
-                    <div class="example-query" onclick="loadExample('Find EcologicalChampionParcel with ecological > 0.6')">
-                        <div class="example-title">High Ecological Performance</div>
-                        <div class="example-text">Find EcologicalChampionParcel with ecological > 0.6</div>
-                        <div style="font-size: 0.85em; color: #95a5a6; margin-top: 5px;">Complex: Class-based filtering + ecological dimension threshold</div>
+                    <div class="example-query" onclick="loadExample('Which parcels persist in their typology despite being surrounded by different regenerative states')">
+                        <div class="example-title">Q4A Context Isolation / Resilience</div>
+                        <div class="example-text">Which parcels persist in their typology despite being surrounded by different regenerative states?</div>
+                        <div style="font-size: 0.85em; color: #95a5a6; margin-top: 5px;">Clear: Neighbor typology mismatch + conformity ratio + stability insight</div>
                     </div>
 
-                    <div class="example-query" onclick="loadExample('Why does kml_106173 have RCI < 0.5')">
-                        <div class="example-title">Diagnostic Analysis</div>
-                        <div class="example-text">Why does kml_106173 have RCI < 0.5</div>
-                        <div style="font-size: 0.85em; color: #95a5a6; margin-top: 5px;">Complex: Property extraction + multi-dimensional scoring + classification reasoning</div>
+                    <div class="example-query" onclick="loadExample('Context status summary for typology conformity')">
+                        <div class="example-title">Q4B Context Status Summary</div>
+                        <div class="example-text">Context status summary for typology conformity</div>
+                        <div style="font-size: 0.85em; color: #95a5a6; margin-top: 5px;">Clear: Group by status + parcel count + conformity range</div>
                     </div>
                 </div>
             </div>
@@ -252,8 +253,8 @@
     </div>
 
     <!-- Load JavaScript -->
-    <script src="loader.js"></script>
-    <script src="app.js?v=20260202-VIZ"></script>
+    <script src="loader.v2.js?v=20260203-Q4A1"></script>
+    <script src="app.v4.js?v=20260203-Q4A1"></script>
     <script>
         // Verification script - check if map functions are loaded
         window.addEventListener('load', function() {

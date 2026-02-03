@@ -1,0 +1,93 @@
+{
+  "head" : {
+    "vars" : [
+      "contextStatus",
+      "parcelCount",
+      "avgConformityRatio",
+      "minRatio",
+      "maxRatio"
+    ]
+  },
+  "results" : {
+    "bindings" : [
+      {
+        "contextStatus" : {
+          "type" : "literal",
+          "value" : "1_Isolated"
+        },
+        "parcelCount" : {
+          "datatype" : "http://www.w3.org/2001/XMLSchema#integer",
+          "type" : "literal",
+          "value" : "93"
+        },
+        "avgConformityRatio" : {
+          "datatype" : "http://www.w3.org/2001/XMLSchema#decimal",
+          "type" : "literal",
+          "value" : "0.074608993157380254154448"
+        },
+        "minRatio" : {
+          "datatype" : "http://www.w3.org/2001/XMLSchema#decimal",
+          "type" : "literal",
+          "value" : "0.0"
+        },
+        "maxRatio" : {
+          "datatype" : "http://www.w3.org/2001/XMLSchema#decimal",
+          "type" : "literal",
+          "value" : "0.181818181818181818181818"
+        }
+      },
+      {
+        "contextStatus" : {
+          "type" : "literal",
+          "value" : "2_Resilient"
+        },
+        "parcelCount" : {
+          "datatype" : "http://www.w3.org/2001/XMLSchema#integer",
+          "type" : "literal",
+          "value" : "169"
+        },
+        "avgConformityRatio" : {
+          "datatype" : "http://www.w3.org/2001/XMLSchema#decimal",
+          "type" : "literal",
+          "value" : "0.292173375605328268050161"
+        },
+        "minRatio" : {
+          "datatype" : "http://www.w3.org/2001/XMLSchema#decimal",
+          "type" : "literal",
+          "value" : "0.2"
+        },
+        "maxRatio" : {
+          "datatype" : "http://www.w3.org/2001/XMLSchema#decimal",
+          "type" : "literal",
+          "value" : "0.384615384615384615384615"
+        }
+      },
+      {
+        "contextStatus" : {
+          "type" : "literal",
+          "value" : "3_Conforming"
+        },
+        "parcelCount" : {
+          "datatype" : "http://www.w3.org/2001/XMLSchema#integer",
+          "type" : "literal",
+          "value" : "1482"
+        },
+        "avgConformityRatio" : {
+          "datatype" : "http://www.w3.org/2001/XMLSchema#decimal",
+          "type" : "literal",
+          "value" : "0.817915410425531883021762"
+        },
+        "minRatio" : {
+          "datatype" : "http://www.w3.org/2001/XMLSchema#decimal",
+          "type" : "literal",
+          "value" : "0.4"
+        },
+        "maxRatio" : {
+          "datatype" : "http://www.w3.org/2001/XMLSchema#decimal",
+          "type" : "literal",
+          "value" : "1.0"
+        }
+      }
+    ]
+  }
+}

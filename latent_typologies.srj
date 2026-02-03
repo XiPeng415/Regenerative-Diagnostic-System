@@ -1,0 +1,131 @@
+{
+  "head" : {
+    "vars" : [
+      "parcelName",
+      "typology",
+      "isEcoChampion",
+      "mobScore",
+      "ecoScore",
+      "socScore",
+      "denScore",
+      "RCI",
+      "ecoSocAvg",
+      "mobilityDeficit",
+      "interventionPriority"
+    ]
+  },
+  "results" : {
+    "bindings" : [
+      {
+        "parcelName" : {
+          "type" : "literal",
+          "value" : "kml_35668"
+        },
+        "typology" : {
+          "type" : "literal",
+          "value" : "DevelopmentPriorityParcel"
+        },
+        "isEcoChampion" : {
+          "datatype" : "http://www.w3.org/2001/XMLSchema#boolean",
+          "type" : "literal",
+          "value" : "false"
+        },
+        "mobScore" : {
+          "datatype" : "http://www.w3.org/2001/XMLSchema#float",
+          "type" : "literal",
+          "value" : "0.4203333333333334"
+        },
+        "ecoScore" : {
+          "datatype" : "http://www.w3.org/2001/XMLSchema#float",
+          "type" : "literal",
+          "value" : "0.5516290142000001"
+        },
+        "socScore" : {
+          "datatype" : "http://www.w3.org/2001/XMLSchema#float",
+          "type" : "literal",
+          "value" : "0.6641389665"
+        },
+        "denScore" : {
+          "datatype" : "http://www.w3.org/2001/XMLSchema#float",
+          "type" : "literal",
+          "value" : "0.028571429"
+        },
+        "RCI" : {
+          "datatype" : "http://www.w3.org/2001/XMLSchema#float",
+          "type" : "literal",
+          "value" : "0.4161681857583334"
+        },
+        "ecoSocAvg" : {
+          "datatype" : "http://www.w3.org/2001/XMLSchema#float",
+          "type" : "literal",
+          "value" : "0.607884"
+        },
+        "mobilityDeficit" : {
+          "datatype" : "http://www.w3.org/2001/XMLSchema#float",
+          "type" : "literal",
+          "value" : "0.18755066"
+        },
+        "interventionPriority" : {
+          "datatype" : "http://www.w3.org/2001/XMLSchema#integer",
+          "type" : "literal",
+          "value" : "3"
+        }
+      },
+      {
+        "parcelName" : {
+          "type" : "literal",
+          "value" : "kml_37732"
+        },
+        "typology" : {
+          "type" : "literal",
+          "value" : "DevelopmentPriorityParcel"
+        },
+        "isEcoChampion" : {
+          "datatype" : "http://www.w3.org/2001/XMLSchema#boolean",
+          "type" : "literal",
+          "value" : "false"
+        },
+        "mobScore" : {
+          "datatype" : "http://www.w3.org/2001/XMLSchema#float",
+          "type" : "literal",
+          "value" : "0.38899999999999996"
+        },
+        "ecoScore" : {
+          "datatype" : "http://www.w3.org/2001/XMLSchema#float",
+          "type" : "literal",
+          "value" : "0.5543275362"
+        },
+        "socScore" : {
+          "datatype" : "http://www.w3.org/2001/XMLSchema#float",
+          "type" : "literal",
+          "value" : "0.58660837225"
+        },
+        "denScore" : {
+          "datatype" : "http://www.w3.org/2001/XMLSchema#float",
+          "type" : "literal",
+          "value" : "0.0"
+        },
+        "RCI" : {
+          "datatype" : "http://www.w3.org/2001/XMLSchema#float",
+          "type" : "literal",
+          "value" : "0.3824839771125"
+        },
+        "ecoSocAvg" : {
+          "datatype" : "http://www.w3.org/2001/XMLSchema#float",
+          "type" : "literal",
+          "value" : "0.57046795"
+        },
+        "mobilityDeficit" : {
+          "datatype" : "http://www.w3.org/2001/XMLSchema#float",
+          "type" : "literal",
+          "value" : "0.18146795"
+        },
+        "interventionPriority" : {
+          "datatype" : "http://www.w3.org/2001/XMLSchema#integer",
+          "type" : "literal",
+          "value" : "3"
+        }
+      }
+    ]
+  }
+}

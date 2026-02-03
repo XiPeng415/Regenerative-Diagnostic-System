@@ -1,7 +1,4 @@
 
-        const APP_VERSION = '2026-02-03-Q4A1';
-        window.APP_VERSION = APP_VERSION;
-
         let network = null;
         let nodes = null;
         let edges = null;
@@ -42,8 +39,6 @@
                 console.log('queryData keys:', Object.keys(queryData));
                 console.log('queryData.parcels length:', queryData.parcels?.length || 0);
             }
-
-            injectVersionBadge();
 
             if (!NETWORK_DATA || !SCHEMA_DATA) {
                 console.error('Missing NETWORK_DATA or SCHEMA_DATA. Make sure loader.js finished loading.');
@@ -91,13 +86,6 @@
             document.getElementById('nodeCount').textContent = allNodes.length;
             document.getElementById('edgeCount').textContent = allEdges.length;
             document.getElementById('visibleNodes').textContent = allNodes.length;
-        }
-
-        function injectVersionBadge() {
-            const badge = document.getElementById('appVersionBadge');
-            if (badge && badge.parentNode) {
-                badge.parentNode.removeChild(badge);
-            }
         }
         
         function initNetwork() {
@@ -1432,26 +1420,15 @@
         function parseAndExecuteQuery(query) {
             const lowerQuery = query.toLowerCase();
             
-            // Query Type 1: Q4B context summary
-            if (lowerQuery.includes('context status summary') || lowerQuery.includes('context summary') ||
-                (lowerQuery.includes('context status') && lowerQuery.includes('count')) ||
-                (lowerQuery.includes('conformity') && lowerQuery.includes('summary'))) {
-                return executeQ4BContextSummary(query);
-            }
-
-            // Query Type 2: Q4A context isolation / resilience
-            if (lowerQuery.includes('isolation') || lowerQuery.includes('isolated') ||
-                lowerQuery.includes('resilient') || lowerQuery.includes('context') ||
-                lowerQuery.includes('conformity') || lowerQuery.includes('stability') ||
-                (lowerQuery.includes('typology') && lowerQuery.includes('surrounded')) ||
-                (lowerQuery.includes('persist') && lowerQuery.includes('typology'))) {
-                return executeQ4AContextQuery(query);
-            }
-
-            // Query Type 3: Typologies with latent regenerative potential
-            if (lowerQuery.includes('typolog') || lowerQuery.includes('latent regenerative') ||
-                lowerQuery.includes('latent potential') || lowerQuery.includes('regenerative potential')) {
-                return executeLatentTypologyQuery(query);
+            // Query Type 1: Balanced regenerative preconditions
+            if (
+                lowerQuery.includes('balanced') ||
+                lowerQuery.includes('balance') ||
+                lowerQuery.includes('regenerative') ||
+                lowerQuery.includes('dominant') ||
+                lowerQuery.includes('precondition')
+            ) {
+                return executeBalancedQuery(query);
             }
             
             // Query Type 2: Isolation/Distance queries
@@ -1476,14 +1453,10 @@
                 return executeConstraintQuery(query);
             }
 
-            // Query Type 6: Balanced regenerative preconditions
-            if (
-                lowerQuery.includes('balanced') ||
-                lowerQuery.includes('balance') ||
-                lowerQuery.includes('dominant') ||
-                lowerQuery.includes('precondition')
-            ) {
-                return executeBalancedQuery(query);
+            // Query Type 6: Typologies with latent regenerative potential
+            if (lowerQuery.includes('typolog') || lowerQuery.includes('latent regenerative') ||
+                lowerQuery.includes('latent potential') || lowerQuery.includes('regenerative potential')) {
+                return executeLatentTypologyQuery(query);
             }
 
             // Query Type 7: Dimension score queries
@@ -1953,73 +1926,6 @@
                 query: query
             };
         }
-
-        function executeQ4AContextQuery(query) {
-            const parcels = (queryData && queryData.parcels) ? queryData.parcels : [];
-            const parcelByLabel = new Map(parcels.map(p => [p.label, p]));
-
-            if (window.Q4A_CONTEXT_RESULTS && window.Q4A_CONTEXT_RESULTS.results) {
-                const bindings = window.Q4A_CONTEXT_RESULTS.results.bindings || [];
-                const results = bindings.map(b => {
-                    const label = b.parcelName?.value || '';
-                    const parcel = parcelByLabel.get(label) || { label };
-                    return {
-                        parcel,
-                        typology: b.typology?.value || (parcel.Typology_Label || parcel.type || 'Unknown'),
-                        rci: parseFloat(b.RCI?.value || 0),
-                        totalNeighbors: parseInt(b.totalNeighbors?.value || 0, 10),
-                        sameTypeNeighbors: parseInt(b.sameTypeNeighbors?.value || 0, 10),
-                        differentTypeNeighbors: parseInt(b.differentTypeNeighbors?.value || 0, 10),
-                        typeConformityRatio: parseFloat(b.typeConformityRatio?.value || 0),
-                        avgNeighborRCI: parseFloat(b.avgNeighborRCI?.value || 0),
-                        rciGapWithNeighbors: parseFloat(b.rciGapWithNeighbors?.value || 0),
-                        contextStatus: b.contextStatus?.value || '',
-                        stabilityInsight: b.stabilityInsight?.value || ''
-                    };
-                });
-
-                return {
-                    type: 'context',
-                    interpretation: `Found ${results.length} parcels with context isolation/resilience status (Q4A SRJ reference)`,
-                    results,
-                    query: query
-                };
-            }
-
-            return {
-                type: 'context',
-                interpretation: 'No Q4A context results available',
-                results: [],
-                query: query
-            };
-        }
-
-        function executeQ4BContextSummary(query) {
-            if (window.Q4B_CONTEXT_SUMMARY && window.Q4B_CONTEXT_SUMMARY.results) {
-                const bindings = window.Q4B_CONTEXT_SUMMARY.results.bindings || [];
-                const results = bindings.map(b => ({
-                    contextStatus: b.contextStatus?.value || '',
-                    parcelCount: parseInt(b.parcelCount?.value || 0, 10),
-                    avgConformityRatio: parseFloat(b.avgConformityRatio?.value || 0),
-                    minRatio: parseFloat(b.minRatio?.value || 0),
-                    maxRatio: parseFloat(b.maxRatio?.value || 0)
-                }));
-
-                return {
-                    type: 'context_summary',
-                    interpretation: `Context status summary (${results.length} groups)`,
-                    results,
-                    query
-                };
-            }
-
-            return {
-                type: 'context_summary',
-                interpretation: 'No Q4B context summary available',
-                results: [],
-                query
-            };
-        }
         
         function executeGeneralQuery(query) {
             // Simple parcel type filter
@@ -2054,7 +1960,6 @@
                 <div class="query-interpretation">
                     <h4>Query Interpretation</h4>
                     <p>${results.interpretation}</p>
-                    <div style="margin-top: 6px; font-size: 12px; color: #6b7785;">Query: ${results.query || ''}</div>
                 </div>
             `;
 
@@ -2068,10 +1973,6 @@
                 displayConstraintResults(results.results, contentDiv);
             } else if (results.type === 'latent') {
                 displayLatentTypologyResults(results.results, contentDiv);
-            } else if (results.type === 'context') {
-                displayContextResults(results.results, contentDiv);
-            } else if (results.type === 'context_summary') {
-                displayContextSummaryResults(results.results, contentDiv);
             } else if (results.type === 'isolation') {
                 displayIsolationResults(results.results, contentDiv);
             } else if (results.type === 'community') {
@@ -2086,7 +1987,7 @@
 
             // Extract parcel names and show on map
             const parcelNames = [];
-            if (results.type === 'balanced' || results.type === 'constraint' || results.type === 'latent' || results.type === 'context' || results.type === 'isolation' || results.type === 'dimension' || results.type === 'community') {
+            if (results.type === 'balanced' || results.type === 'constraint' || results.type === 'latent' || results.type === 'isolation' || results.type === 'dimension' || results.type === 'community') {
                 // These all have result.parcel structure
                 results.results.forEach(r => {
                     if (r.parcel && r.parcel.label) {
@@ -2103,18 +2004,7 @@
 
             // Show map with highlighted parcels
             if (parcelNames.length > 0) {
-                if (results.type === 'context') {
-                    const styleByName = new Map();
-                    const infoByName = new Map();
-                    results.results.forEach(r => {
-                        const ratio = isFinite(r.typeConformityRatio) ? r.typeConformityRatio : 0;
-                        styleByName.set(r.parcel.label, getRadiantColor(ratio));
-                        infoByName.set(r.parcel.label, r);
-                    });
-                    showMapWithParcelsStyled(parcelNames, styleByName, infoByName);
-                } else {
-                    showMapWithParcels(parcelNames);
-                }
+                showMapWithParcels(parcelNames);
             }
         }
         
@@ -2355,45 +2245,6 @@
             container.innerHTML = html;
         }
 
-        function displayContextResults(results, container) {
-            const count = results.length;
-            container.innerHTML = `
-                <div class="query-interpretation" style="margin-top: 10px;">
-                    <p>Context isolation/resilience results are shown on the parcel map with a radiant color palette.</p>
-                    <p style="color:#7f8c8d; font-size: 0.9em;">${count} parcels highlighted. Lower conformity = hotter color.</p>
-                </div>
-            `;
-        }
-
-        function displayContextSummaryResults(results, container) {
-            let html = '<div class="results-grid">';
-            results.forEach(r => {
-                html += `
-                    <div class="result-card">
-                        <h3>${r.contextStatus}</h3>
-                        <div class="result-property">
-                            <span class="result-label">Parcel Count</span>
-                            <span class="result-value highlight">${r.parcelCount}</span>
-                        </div>
-                        <div class="result-property">
-                            <span class="result-label">Avg Conformity</span>
-                            <span class="result-value">${(r.avgConformityRatio || 0).toFixed(3)}</span>
-                        </div>
-                        <div class="result-property">
-                            <span class="result-label">Min Ratio</span>
-                            <span class="result-value">${(r.minRatio || 0).toFixed(3)}</span>
-                        </div>
-                        <div class="result-property">
-                            <span class="result-label">Max Ratio</span>
-                            <span class="result-value">${(r.maxRatio || 0).toFixed(3)}</span>
-                        </div>
-                    </div>
-                `;
-            });
-            html += '</div>';
-            container.innerHTML = html;
-        }
-
         function displayLatentTypologyResults(results, container) {
             let html = '<div class="results-grid">';
 
@@ -2544,7 +2395,6 @@
             try {
                 console.log('=== EXECUTING QUERY ===');
                 console.log('Query:', query);
-                injectVersionBadge();
                 console.log('NETWORK_DATA available:', !!NETWORK_DATA);
                 console.log('NETWORK_DATA.nodes length:', NETWORK_DATA?.nodes?.length || 0);
                 console.log('queryData available:', !!queryData);
@@ -2636,72 +2486,7 @@
             }, 300);
         }
 
-        function showMapWithParcelsStyled(parcelNames, styleByName, infoByName) {
-            const mapSection = document.getElementById('mapSection');
-            mapSection.style.display = 'block';
-
-            if (!parcelMap) {
-                initializeMap().then(() => {
-                    highlightParcelsOnMap(parcelNames, styleByName, infoByName);
-                });
-            } else {
-                highlightParcelsOnMap(parcelNames, styleByName, infoByName);
-            }
-
-            setTimeout(() => {
-                mapSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }, 300);
-        }
-
-        function hexToRgb(hex) {
-            const clean = hex.replace('#', '').trim();
-            const bigint = parseInt(clean, 16);
-            return {
-                r: (bigint >> 16) & 255,
-                g: (bigint >> 8) & 255,
-                b: bigint & 255
-            };
-        }
-
-        function interpolateColor(a, b, t) {
-            const c1 = hexToRgb(a);
-            const c2 = hexToRgb(b);
-            const r = Math.round(c1.r + (c2.r - c1.r) * t);
-            const g = Math.round(c1.g + (c2.g - c1.g) * t);
-            const bch = Math.round(c1.b + (c2.b - c1.b) * t);
-            return `rgb(${r}, ${g}, ${bch})`;
-        }
-
-        function getRadiantColor(conformityRatio) {
-            const t = Math.max(0, Math.min(1, conformityRatio));
-            // 0 = hot magenta/red (isolated), 1 = warm gold (conforming)
-            return interpolateColor('#ff3d6e', '#ffd166', t);
-        }
-
-        function updateMapLegendForContext() {
-            const legend = document.getElementById('mapLegend');
-            if (!legend) return;
-            legend.innerHTML = `
-                <div style="font-weight: 700; margin-bottom: 8px;">Legend</div>
-                <div style="margin-bottom: 6px;">Context Conformity (low → high)</div>
-                <div style="display:flex; align-items:center; gap:8px;">
-                    <span style="display:inline-block; width:120px; height:12px; background: linear-gradient(90deg, #ff3d6e, #ffd166); border:1px solid #e0e0e0; border-radius:4px;"></span>
-                    <span style="font-size:12px; color:#7f8c8d;">Isolated → Conforming</span>
-                </div>
-            `;
-        }
-
-        function resetMapLegendDefault() {
-            const legend = document.getElementById('mapLegend');
-            if (!legend) return;
-            legend.innerHTML = `
-                <div style="font-weight: 700; margin-bottom: 8px;">Legend</div>
-                <div><span style="display: inline-block; width: 16px; height: 16px; background: rgba(52, 152, 219, 0.2); border: 2px solid #3498db; vertical-align: middle;"></span> All Parcels</div>
-                <div><span style="display: inline-block; width: 16px; height: 16px; background: rgba(231, 76, 60, 0.6); border: 2px solid #e74c3c; vertical-align: middle;"></span> Query Results</div>
-            `;
-        }
-
-        function highlightParcelsOnMap(parcelNames, styleByName = null, infoByName = null) {
+        function highlightParcelsOnMap(parcelNames) {
             if (!parcelsGeoJSON || !parcelMap) return;
 
             // Remove previous highlighted layer
@@ -2719,36 +2504,17 @@
                 return;
             }
 
-            if (styleByName) {
-                updateMapLegendForContext();
-            } else {
-                resetMapLegendDefault();
-            }
-
-            // Create highlighted parcels layer
+            // Create highlighted parcels layer (red, more opaque)
             highlightedParcelsLayer = L.geoJSON({
                 type: 'FeatureCollection',
                 features: highlightedFeatures
             }, {
-                style: function(feature) {
-                    const name = feature.properties.Name;
-                    if (styleByName && styleByName.has(name)) {
-                        const color = styleByName.get(name);
-                        return {
-                            fillColor: color,
-                            fillOpacity: 0.7,
-                            color: color,
-                            weight: 2,
-                            opacity: 1
-                        };
-                    }
-                    return {
-                        fillColor: '#e74c3c',
-                        fillOpacity: 0.6,
-                        color: '#e74c3c',
-                        weight: 2,
-                        opacity: 1
-                    };
+                style: {
+                    fillColor: '#e74c3c',
+                    fillOpacity: 0.6,
+                    color: '#e74c3c',
+                    weight: 2,
+                    opacity: 1
                 },
                 onEachFeature: function(feature, layer) {
                     const parcelName = feature.properties.Name || 'Unknown';
@@ -2760,24 +2526,6 @@
                     }
 
                     let popupContent = `<div class="popup-title">📍 ${parcelName}</div>`;
-
-                    if (infoByName && infoByName.has(parcelName)) {
-                        const info = infoByName.get(parcelName);
-                        popupContent += `
-                            <div class="popup-row">
-                                <span class="popup-label">Context Status:</span>
-                                <span class="popup-value">${info.contextStatus || '-'}</span>
-                            </div>
-                            <div class="popup-row">
-                                <span class="popup-label">Stability Insight:</span>
-                                <span class="popup-value">${info.stabilityInsight || '-'}</span>
-                            </div>
-                            <div class="popup-row">
-                                <span class="popup-label">Conformity Ratio:</span>
-                                <span class="popup-value">${(info.typeConformityRatio ?? 0).toFixed(3)}</span>
-                            </div>
-                        `;
-                    }
                     
                     if (parcelInfo) {
                         popupContent += `
@@ -2854,7 +2602,6 @@
                 // Reset view to Singapore
                 parcelMap.setView([1.35, 103.82], 12);
             }
-            resetMapLegendDefault();
         }
 
         function fitMapToParcels() {
